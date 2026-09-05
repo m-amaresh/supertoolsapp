@@ -1,0 +1,68 @@
+name: Feature request
+description: Propose a new tool or enhancement aligned with project standards
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user problem are we solving?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the proposed behavior and UX.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - New tool
+        - Existing tool enhancement
+        - Security hardening
+        - UI/UX consistency
+        - Developer experience
+    validations:
+      required: true
+
+  - type: textarea
+    id: standards
+    attributes:
+      label: Standards alignment
+      description: Explain how this follows `docs/README.md` and linked public technical docs.
+      placeholder: |
+        - Tool contract (lib first, top options, global status)
+        - Input/file safety limits
+        - Accessibility and consistency requirements
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / tradeoffs
+      description: Performance, security, compatibility, complexity tradeoffs.
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - preview
+      - main
+  push:
+    branches:
+      - preview
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SITE_URL: https://www.supertoolsapp.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 11.20.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome check
+        run: pnpm -s exec biome check src/app src/components src/hooks src/lib tests next.config.ts vitest.config.e2e.ts scripts public/pdf/qpdf-worker.js
+
+      - name: Unit tests
+        run: pnpm -s test:run
+
+      - name: Upload test results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-results
+          path: test-results/vitest.xml
+          if-no-files-found: ignore
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Production build
+        run: pnpm -s build
+
+      - name: Install Chromium for layout tests
+        run: pnpm -s exec playwright install --with-deps chromium
+
+      - name: Layout and behaviour tests
+        run: pnpm -s test:e2e
+
+      - name: Upload layout test results artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-e2e-results
+          path: test-results/vitest-e2e.xml
+          if-no-files-found: ignore
