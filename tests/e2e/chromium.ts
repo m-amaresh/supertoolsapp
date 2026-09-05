@@ -59,7 +59,7 @@ export function resolveChromiumPath(): string {
     [
       "No Chromium binary found for playwright-core.",
       `Looked at "${declared || "(none declared)"}" and under "${cacheRoot}".`,
-      "Install one with `pnpm exec playwright install chromium`,",
+      "Install one with `pnpm exec playwright-core install chromium`,",
       "or point CHROMIUM_EXECUTABLE_PATH at an existing Chromium build.",
     ].join(" "),
   );

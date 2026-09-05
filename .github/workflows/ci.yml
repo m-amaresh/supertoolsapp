@@ -59,7 +59,7 @@ jobs:
         run: pnpm -s build
 
       - name: Install Chromium for layout tests
-        run: pnpm -s exec playwright install --with-deps chromium
+        run: pnpm -s exec playwright-core install --with-deps chromium
 
       - name: Layout and behaviour tests
         run: pnpm -s test:e2e
