@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CookiePreferencesButton } from "@/components/CookiePreferencesButton";
+import { isAnalyticsConfigured } from "@/lib/analytics";
 import { GITHUB_REPO_URL } from "@/lib/site";
 import { toolCategories } from "@/lib/tools";
 
@@ -6,7 +8,7 @@ import { toolCategories } from "@/lib/tools";
 // site-wide link block stays out of the client bundle.
 //
 // Every page carries these links: they give the category hubs and the About /
-// Privacy pages an inbound link from all 45 routes, which is how a crawler
+// Privacy pages an inbound link from every route, which is how a crawler
 // reaches them without depending on the sidebar.
 export function Footer() {
   return (
@@ -63,6 +65,11 @@ export function Footer() {
                   Privacy
                 </Link>
               </li>
+              {isAnalyticsConfigured() && (
+                <li>
+                  <CookiePreferencesButton />
+                </li>
+              )}
               <li>
                 <a
                   href={GITHUB_REPO_URL}

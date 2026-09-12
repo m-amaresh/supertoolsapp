@@ -19,6 +19,12 @@ jobs:
 
     env:
       NEXT_PUBLIC_SITE_URL: https://www.supertoolsapp.com
+      # A placeholder property that receives nothing. It exists so the build
+      # under test actually contains the consent banner and the Consent Mode
+      # bootstrap — without an ID those code paths compile away, and
+      # tests/e2e/consent.test.ts would silently assert nothing. The test
+      # blocks googletagmanager.com, so no request reaches Google from CI.
+      NEXT_PUBLIC_GA_MEASUREMENT_ID: G-TEST1234567
 
     steps:
       - name: Checkout

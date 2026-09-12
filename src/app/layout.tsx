@@ -4,8 +4,10 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/AppShell";
+import { ConsentManager } from "@/components/ConsentManager";
 import { Footer } from "@/components/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { GA_MEASUREMENT_ID, isAnalyticsConfigured } from "@/lib/analytics";
 import { GLOBAL_KEYWORDS } from "@/lib/seo";
 import { getSiteUrl, shouldIndexSite } from "@/lib/site";
 
@@ -74,8 +76,14 @@ export default function RootLayout({
         <ThemeProvider>
           <AppShell footer={<Footer />}>{children}</AppShell>
         </ThemeProvider>
+        {/* Vercel's analytics are cookieless and store nothing on the
+            device, so they are not gated behind the banner. Google Analytics
+            is, and does not render at all without a measurement ID. */}
         <Analytics />
         <SpeedInsights />
+        {isAnalyticsConfigured() && (
+          <ConsentManager measurementId={GA_MEASUREMENT_ID} />
+        )}
       </body>
     </html>
   );

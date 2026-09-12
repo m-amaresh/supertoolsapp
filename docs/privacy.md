@@ -28,22 +28,74 @@ It does not mean the site is a sealed box with no network activity at all. Like 
 - HTML, JavaScript, CSS, fonts, and images
 - static Next.js assets
 - optional analytics or performance scripts when enabled in deployment
+- the consent banner's own script and stylesheet, served from this origin
 
 The important boundary is between serving the app and processing your payload.
 
 ## Telemetry
 
-This repo includes optional Vercel integrations for:
+Two kinds, and they are treated differently because they behave differently.
 
-- analytics
-- speed insights
+### Vercel Analytics and Speed Insights
 
-Policy:
+Always on. Both are cookieless: they store nothing on your device and set no
+identifier, which is why they sit outside the consent banner. They record page
+views and Core Web Vitals.
 
-- usage and performance metadata may be collected
-- raw sensitive tool payloads should not be logged as analytics data
+### Google Analytics
 
-If you add telemetry, keep that boundary intact.
+Runs only where `NEXT_PUBLIC_GA_MEASUREMENT_ID` is configured. Where it is not
+— local development, or anyone running their own copy — there is no Google
+Analytics, no cookie banner, and the Content-Security-Policy names no external
+host at all.
+
+Where it is configured, the site uses Google Consent Mode v2 and the deployment
+is **default-denied**:
+
+- `gtag.js` loads on every page, but the first thing queued for it sets
+  `analytics_storage`, `ad_storage`, `ad_user_data`, `ad_personalization` and
+  `personalization_storage` to `denied`. Ordering is the whole point, and it is
+  asserted in `tests/e2e/consent.test.ts`: if the property were configured
+  before the defaults were queued, gtag would replay a measured hit from
+  someone who never agreed.
+- Nothing is written to your device, and no analytics cookie is set, unless you
+  accept in the banner.
+- **Being honest about what default-denied still does:** with Consent Mode v2,
+  a declined session still sends Google a `page_view`. Inspected on the wire, it
+  carries the page URL and title, screen size, language, browser and platform,
+  your IP as with any request, and a client id — *and* the signal `gcs=G100`,
+  telling Google that both ad and analytics storage were refused. Google uses
+  these for aggregate modelling.
+
+  The client id is the part worth being precise about: because no cookie is
+  written, a fresh one is generated on every page load, so it cannot link your
+  visits to each other. It is not the persistent identifier an accepted session
+  gets. But this is a real page view report, not a contentless ping.
+
+  What it never contains is anything you put *into* a tool.
+
+  If you want *no* contact with Google whatsoever, block
+  `googletagmanager.com`; the site is fully functional without it, and every
+  tool keeps working.
+- You can change your mind at any time through **Cookie preferences** in the
+  footer of every page.
+
+The consent banner itself is [Silktide Consent
+Manager](https://github.com/silktide/consent-manager) (MIT), vendored into
+`public/consent/` and served from this origin. It is not loaded from a CDN,
+because adding a cookie banner should not mean granting a third party script
+execution on every page.
+
+### The boundary that matters
+
+Analytics sees page views: which tool pages are visited, and roughly from
+where. It never sees what you put *into* a tool. Tool payloads — text, files,
+keys, passwords, PDFs — are processed in your browser and are not sent
+anywhere, whether or not you accept cookies. Accepting analytics does not
+change what a tool does with your data.
+
+If you add telemetry, keep that boundary intact: raw tool payloads must never
+be logged as analytics data.
 
 ## The PDF Tools
 
@@ -69,7 +121,14 @@ connection at all.
 
 ## Browser Storage
 
-SuperTools keeps browser-stored state minimal. In practice, that mainly means theme preference plus the browser's normal cache for fetched assets.
+SuperTools keeps browser-stored state minimal. In practice that means:
+
+- your theme preference
+- your consent choice, under the `supertools_consent` key
+- the browser's normal cache for fetched assets
+
+and, only if you accept analytics, Google Analytics' own cookies. Tool input is
+never stored — it lives in page memory and is gone when you close the tab.
 
 That does not change the privacy model, but it is still worth being explicit about what the app stores locally.
 

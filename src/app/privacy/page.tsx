@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { isAnalyticsConfigured } from "@/lib/analytics";
 import { getSiteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -84,12 +85,48 @@ export default function PrivacyPage() {
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
               This deployment uses Vercel Analytics and Speed Insights, which
-              record aggregate page views and performance timings. They do not
-              receive the contents of any tool input. No advertising trackers,
-              no third-party ad scripts, and no cross-site profiling are used,
-              and there is no account system, so nothing you do here is tied to
-              an identity.
+              record aggregate page views and performance timings. They are
+              cookieless — they store nothing on your device — which is why they
+              are not part of the cookie banner. They do not receive the
+              contents of any tool input, and there is no account system, so
+              nothing you do here is tied to an identity.
             </p>
+            {isAnalyticsConfigured() && (
+              <>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                  This deployment also uses Google Analytics, and it is off
+                  until you turn it on. The site runs Google Consent Mode v2
+                  with every signal — analytics, advertising, personalisation —
+                  set to denied before Google&rsquo;s script is given anything
+                  to act on. No analytics cookie is written unless you accept.
+                  You can change your mind at any time through{" "}
+                  <span className="text-foreground">Cookie preferences</span> in
+                  the footer of any page.
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                  Being precise about what declining still does: Google&rsquo;s
+                  script is still loaded, and a declined session still reports
+                  one page view. It carries the page address and title, your
+                  screen size, language, browser and platform, your IP as any
+                  request does, and a client identifier — together with a flag
+                  telling Google you refused storage. Because no cookie is
+                  written, that identifier is regenerated on every page load, so
+                  it cannot link your visits together.
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                  If you want no contact with Google at all, block{" "}
+                  <code className="font-mono text-[13px] text-foreground">
+                    googletagmanager.com
+                  </code>{" "}
+                  — every tool on this site keeps working without it.
+                </p>
+                <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                  Analytics sees which pages are visited. It never sees what you
+                  put into a tool: that is processed in your browser and is not
+                  sent anywhere, whether you accept or decline.
+                </p>
+              </>
+            )}
           </section>
 
           <section>
@@ -135,8 +172,10 @@ export default function PrivacyPage() {
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
               Stored state is kept minimal: your light or dark theme preference,
-              plus the browser's ordinary cache of the site's assets. Tool input
-              is not persisted between visits.
+              {isAnalyticsConfigured()
+                ? " your cookie choice, the browser's ordinary cache of the site's assets, and — only if you accept analytics — Google Analytics' own cookies."
+                : " plus the browser's ordinary cache of the site's assets."}{" "}
+              Tool input is not persisted between visits.
             </p>
           </section>
 
@@ -148,8 +187,11 @@ export default function PrivacyPage() {
               You do not have to take it on trust. Open your browser's network
               panel and use any tool — you will see no request carrying your
               input. The source is public, and the site sends a strict Content
-              Security Policy that confines network access to this origin. See
-              the{" "}
+              Security Policy that confines network access to this origin
+              {isAnalyticsConfigured()
+                ? " and, where analytics is enabled, to Google's measurement endpoints — nothing else"
+                : ""}
+              . See the{" "}
               <Link
                 href="/about"
                 className="text-foreground underline underline-offset-2 hover:text-primary"

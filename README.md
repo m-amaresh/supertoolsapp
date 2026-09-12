@@ -61,7 +61,7 @@ Open `http://localhost:3100`.
 
 Tool payloads — JSON, YAML, CSV, regex input, secrets, tokens, ciphertext, passphrases, generated passwords, uploaded files — are processed locally in the browser. The app does not send them to any backend service.
 
-Network activity is limited to serving app assets (HTML, JS, CSS, fonts) and optional Vercel analytics metadata. The important boundary is between *serving the app* and *processing your data*.
+Network activity is limited to serving app assets (HTML, JS, CSS, fonts), optional Vercel analytics metadata, and — where a measurement ID is configured — Google Analytics behind a cookie banner. The important boundary is between *serving the app* and *processing your data*: analytics counts page views, and never sees what you paste into a tool.
 
 Full policy: [docs/privacy.md](docs/privacy.md)
 
@@ -95,10 +95,18 @@ docs/               Project documentation
 | Tests | Vitest |
 | Package Manager | pnpm |
 | Deployment | Vercel (optional analytics + speed insights) |
+| Consent | [Silktide Consent Manager](https://github.com/silktide/consent-manager) (MIT), vendored and self-hosted |
 
 ## Environment Variables
 
-Local development works without configuration. For a real production deployment, set `NEXT_PUBLIC_SITE_URL` so canonical metadata, sitemap output, and structured data use the correct domain.
+Local development works without configuration.
+
+| Variable | Purpose |
+|---|---|
+| `NEXT_PUBLIC_SITE_URL` | Canonical metadata, sitemap output, and structured data. Set this for any real deployment. |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 measurement ID (`G-XXXXXXXXXX`). **Leave unset and there is no Google Analytics, no cookie banner, and no CSP relaxation at all** — the build stays same-origin only. |
+
+The measurement ID is validated, not just read: a malformed value is treated as unset, so a typo cannot ship a cookie banner that reports to nothing.
 
 ## Pre-Merge Checklist
 

@@ -319,3 +319,178 @@
     opacity: 1;
   }
 }
+
+/* The vendored consent banner always creates a floating cookie button and
+   shows it with an inline `display: flex`, and exposes no config to turn it
+   off — so this needs `!important` to beat the inline style, unlike the block
+   above.
+   It is suppressed because the footer carries a "Cookie preferences" link on
+   every route, which is a real control in the tab order rather than a button
+   pinned over the tool UI. Two ways to reach the same dialog is clutter, and
+   at 375px the floating one overlaps the tool cards.
+   Guarded by tests/e2e/consent.test.ts. */
+#stcm-icon {
+  /* biome-ignore lint/complexity/noImportantStyles: the banner sets
+     `display: flex` as an inline style on this element and offers no config to
+     disable it, so nothing weaker than !important can win. */
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   Consent banner theming
+
+   The vendored banner ships Silktide's own brand: a near-black panel, bright
+   yellow buttons and Helvetica. It exposes eight custom properties on
+   `#stcm-wrapper`, so most of this is a remap rather than a rewrite — and
+   because they point at the site's own tokens, the banner follows light and
+   dark automatically with no second block.
+
+   Selector is `html #stcm-wrapper`, not `#stcm-wrapper`: the vendored sheet
+   declares these at exactly the same specificity, and the load order between
+   it and this file is not guaranteed. One extra element settles it for good.
+
+   Kept here rather than in public/consent/ so that updating the vendored files
+   never overwrites the theme. Guarded by tests/e2e/consent.test.ts.
+   -------------------------------------------------------------------------- */
+html #stcm-wrapper {
+  --fontFamily: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --backgroundColor: var(--card);
+  --textColor: var(--foreground);
+  --primaryColor: var(--primary);
+  --backdropBackgroundColor: oklch(0 0 0 / 0.45);
+  --backdropBackgroundBlur: 2px;
+  --boxShadow: 0 12px 32px -12px oklch(0 0 0 / 0.28);
+  --iconColor: var(--primary-foreground);
+  --iconBackgroundColor: var(--primary);
+}
+
+/* Match the card treatment used everywhere else: 1px border, site radius. */
+html #stcm-banner,
+html #stcm-modal {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--boxShadow);
+}
+
+/* The site's body copy is 13–14px; the banner's 16px default reads oversized
+   next to it. */
+html #stcm-banner p,
+html #stcm-modal p,
+html #stcm-modal label,
+html #stcm-wrapper .stcm-button,
+html #stcm-banner .stcm-preferences-button span {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+html #stcm-wrapper .stcm-button {
+  border-radius: var(--radius-md);
+  border-width: 1px;
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+/* Accept and reject both ship as `stcm-button-primary`, which puts two filled
+   buttons side by side. The site's convention is one filled action and one
+   outline beside it, so the destructive-of-nothing option steps back. */
+html #stcm-wrapper .stcm-reject-all {
+  background-color: transparent;
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+
+html #stcm-wrapper .stcm-reject-all:hover {
+  background-color: var(--accent);
+  color: var(--foreground);
+}
+
+/* Attribution to a genuinely free tool is fair, but it should read as a small
+   mark rather than a second brand competing with the page.
+   Only the glyph shrinks. Sizing the anchor itself took the hit area to 20x48
+   and tripped the 24px minimum in tests/e2e/filled-state.test.ts on every tool
+   page — the link stays a full-size target, it just draws less. */
+html #stcm-banner a.stcm-logo {
+  fill: var(--muted-foreground);
+  opacity: 0.55;
+}
+
+html #stcm-banner a.stcm-logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+html #stcm-banner a.stcm-logo:hover {
+  opacity: 0.9;
+}
+
+/* Focus rings follow the site's, rather than the banner's two-tone shadow.
+   The vendored rule is on `:focus`, not `:focus-visible`, and the modal moves
+   focus to its close button on open — so targeting only `:focus-visible` left
+   a bright box painted around the ✕ every time the dialog opened. */
+html #stcm-wrapper .stcm-button:focus,
+html #stcm-banner:focus,
+html #stcm-banner .stcm-preferences-button:focus,
+html #stcm-modal .stcm-modal-close:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+/* Listed after the `:focus` reset above, which it has to outrank. Splitting
+   the two is what keeps the ring for keyboard users while not painting a box
+   around the ✕ every time the dialog opens and moves focus there itself. */
+html #stcm-wrapper .stcm-button:focus-visible,
+html #stcm-banner .stcm-preferences-button:focus-visible,
+html #stcm-modal .stcm-modal-close:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+/* The modal's own reject sits beside Save and ships filled, same as the
+   banner's — step it back the same way. */
+html #stcm-wrapper .stcm-modal-reject-all {
+  background-color: transparent;
+  color: var(--foreground);
+  border-color: var(--border-strong);
+}
+
+html #stcm-wrapper .stcm-modal-reject-all:hover {
+  background-color: var(--accent);
+  color: var(--foreground);
+}
+
+/* A dismissal control should not be the heaviest thing in the dialog. */
+html #stcm-modal .stcm-modal-close {
+  background: transparent;
+  border-radius: var(--radius-md);
+  padding: 8px;
+}
+
+/* biome-ignore lint/style/noDescendingSpecificity: the other `svg` rule in
+   this section matches the banner's logo link, inside #stcm-banner. These two
+   can never select the same element, so there is no cascade to get wrong —
+   and ordering them to satisfy the rule would mean interleaving the banner and
+   modal blocks. */
+html #stcm-modal .stcm-modal-close svg {
+  fill: var(--muted-foreground);
+}
+
+html #stcm-modal .stcm-modal-close:hover {
+  background: var(--accent);
+}
+
+html #stcm-modal .stcm-modal-close:hover svg {
+  fill: var(--foreground);
+}
+
+/* Attribution, not a call to action. */
+html #stcm-modal footer a.stcm-credit-link {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+html #stcm-modal footer a.stcm-credit-link:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+}

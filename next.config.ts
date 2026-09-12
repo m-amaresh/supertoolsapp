@@ -1,6 +1,25 @@
 import type { NextConfig } from "next";
+import {
+  GA_CONNECT_HOSTS,
+  GA_IMG_HOSTS,
+  GA_SCRIPT_HOSTS,
+  isAnalyticsConfigured,
+} from "./src/lib/analytics";
 
 const isDev = process.env.NODE_ENV !== "production";
+
+// Google Analytics is the only thing the site loads from another origin, and
+// gtag.js cannot be self-hosted. The relaxation is therefore conditional: a
+// build with no measurement ID — local development, or anyone running their
+// own copy — keeps script-src naming nothing but 'self'.
+//
+// The consent banner does not appear here on purpose. It is vendored into
+// public/consent/ precisely so that adding a cookie banner did not also mean
+// trusting a CDN with script execution on every page.
+const withAnalytics = isAnalyticsConfigured();
+const gaScript = withAnalytics ? ` ${GA_SCRIPT_HOSTS.join(" ")}` : "";
+const gaConnect = withAnalytics ? ` ${GA_CONNECT_HOSTS.join(" ")}` : "";
+const gaImg = withAnalytics ? ` ${GA_IMG_HOSTS.join(" ")}` : "";
 
 // Vercel Analytics + Speed Insights load debug scripts from these hosts only
 // in dev. Production uses same-origin `/_vercel/insights/*` paths rewritten
@@ -30,12 +49,12 @@ function buildCsp({ allowWasm }: { allowWasm: boolean }): string {
   return [
     "default-src 'self'",
     scriptSrc,
-    `script-src-elem 'self' 'unsafe-inline'${isDev ? ` ${vercelInsightsScript}` : ""}`,
+    `script-src-elem 'self' 'unsafe-inline'${isDev ? ` ${vercelInsightsScript}` : ""}${gaScript}`,
     "script-src-attr 'none'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    `img-src 'self' data: blob:${gaImg}`,
     "font-src 'self' data:",
-    `connect-src 'self'${isDev ? ` ${vercelInsightsScript} ${vercelInsightsEvents}` : ""}`,
+    `connect-src 'self'${isDev ? ` ${vercelInsightsScript} ${vercelInsightsEvents}` : ""}${gaConnect}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
