@@ -15,7 +15,7 @@ The rough product goals are:
 
 ## Current Tool Count
 
-29 public tools
+30 public tools
 
 ## Routes by Category
 
@@ -37,6 +37,7 @@ The rough product goals are:
 
 ### PDF
 
+- `/tools/pdf/merge`
 - `/tools/pdf/unlock`
 
 ### Data

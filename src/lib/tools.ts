@@ -32,7 +32,8 @@ export type ToolIconKey =
   | "calendarDays"
   | "networkWired"
   | "qrcode"
-  | "filePdf";
+  | "filePdf"
+  | "layerGroup";
 
 export interface ToolDefinition {
   name: string;
@@ -287,6 +288,18 @@ export const toolDefinitions: ToolDefinition[] = [
     sidebarOrder: 1,
     icon: "filePdf",
   },
+  {
+    name: "PDF Merger",
+    description: "Combine several PDFs into one document",
+    href: "/tools/pdf/merge",
+    available: true,
+    featured: true,
+    homeOrder: 30,
+    sidebarCategory: "PDF",
+    sidebarLabel: "Merger",
+    sidebarOrder: 2,
+    icon: "layerGroup",
+  },
 
   // ── Data ──
   {
@@ -481,7 +494,7 @@ export const toolCategories: ToolCategoryPage[] = [
     slug: "pdf",
     heading: "PDF Tools",
     description:
-      "Work with PDF files without uploading them. Remove password protection from documents you can already open, entirely inside your browser.",
+      "Work with PDF files without uploading them. Merge documents into one, and remove password protection from files you can already open — entirely inside your browser.",
   },
   {
     name: "Data",

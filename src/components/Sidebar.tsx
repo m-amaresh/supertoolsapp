@@ -16,6 +16,7 @@ import { faFont } from "@fortawesome/free-solid-svg-icons/faFont";
 import { faHashtag } from "@fortawesome/free-solid-svg-icons/faHashtag";
 import { faHeading } from "@fortawesome/free-solid-svg-icons/faHeading";
 import { faKey } from "@fortawesome/free-solid-svg-icons/faKey";
+import { faLayerGroup } from "@fortawesome/free-solid-svg-icons/faLayerGroup";
 import { faLink } from "@fortawesome/free-solid-svg-icons/faLink";
 import { faLock } from "@fortawesome/free-solid-svg-icons/faLock";
 import { faNetworkWired } from "@fortawesome/free-solid-svg-icons/faNetworkWired";
@@ -60,6 +61,7 @@ const iconByKey: Record<ToolIconKey, IconDefinition> = {
   networkWired: faNetworkWired,
   qrcode: faQrcode,
   filePdf: faFilePdf,
+  layerGroup: faLayerGroup,
 };
 
 interface SidebarProps {

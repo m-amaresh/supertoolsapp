@@ -86,7 +86,7 @@ Each rule notes where the codebase does not yet conform. Those lists are the rem
 - **Manual tools have exactly one filled `variant="default"` button**, labelled with the verb it performs, placed at the end of the input flow.
 - A button that recomputes what is already on screen is a lie about how the tool works. Do not add one.
 
-Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expensive), `pdf-unlock` (WASM plus a password), `tls-cert` (parses a certificate chain on demand), `password`, `uuid` and `lorem` (generators — re-running is the point), `diff` (expensive on large inputs). Everything else is live.
+Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expensive), `pdf-unlock` (WASM plus a password) and `pdf-merge` (WASM over several files), `tls-cert` (parses a certificate chain on demand), `password`, `uuid` and `lorem` (generators — re-running is the point), `diff` (expensive on large inputs). Everything else is live.
 
 *Conforming.* No live tool carries a filled button that recomputes what is already on screen. `timestamp`'s `Use current time` is a ghost convenience that fills the input. `qrcode` does keep a filled `SVG` button, which is correct — it exports a file rather than recomputing, and only appears once a code exists.
 
@@ -133,7 +133,7 @@ The full convention is already correct in `base64`, `base32`, `hex` and `url`. E
 
 A mutually-exclusive choice is always a `SegmentedControl`, never two buttons — it gets `role="radio"` semantics and arrow-key navigation for free. Putting a mode toggle beside the action it modifies also produces the same word twice in one row, once as a setting and once as an action, distinguishable only by button styling.
 
-*Conforming.* Every mode, direction and view toggle now sits in the options bar. With Phase 0's `flex-wrap` disabled, all 29 toolbars still fit a 375px card unaided — the wrapping is now insurance rather than the thing holding the layout together.
+*Conforming.* Every mode, direction and view toggle now sits in the options bar. With Phase 0's `flex-wrap` disabled, all 30 toolbars still fit a 375px card unaided — the wrapping is now insurance rather than the thing holding the layout together.
 
 ### Accessibility invariants
 
@@ -173,13 +173,22 @@ Relevant files:
 
 ## WebAssembly and the PDF Tools
 
-The PDF unlock tool is the one place where a pure-TypeScript implementation was
-not the right call. Removing PDF encryption correctly means parsing cross
--reference tables and streams, object streams, and every standard security
-handler (RC4 40/128, AES-128, AES-256). [qpdf](https://qpdf.readthedocs.io/) has
-done that for twenty years, so it is compiled to WebAssembly and driven directly.
+The PDF tools are the one place where a pure-TypeScript implementation was not
+the right call. Removing PDF encryption correctly means parsing cross-reference
+tables and streams, object streams, and every standard security handler (RC4
+40/128, AES-128, AES-256); assembling pages from several documents means
+rewriting object numbers, resources and page trees without breaking any of it.
+[qpdf](https://qpdf.readthedocs.io/) has done both for twenty years, so it is
+compiled to WebAssembly and driven directly.
 
-Three consequences are worth knowing about:
+`pdf-unlock` and `pdf-merge` each own a worker in `public/pdf/` and a module in
+`src/lib/`. What they share — the PDF header check, the size ceiling, the exit
+code rules, the warning extraction — lives in
+[`src/lib/qpdf.ts`](../src/lib/qpdf.ts), so the two tools cannot drift into two
+conventions for the same engine behaviour. What differs is what an error *means*
+to the reader, and that stays in each tool's own module.
+
+Consequences worth knowing about:
 
 - **Instantiating WebAssembly requires `'wasm-unsafe-eval'` in `script-src`.**
   A dedicated worker takes its CSP from the response headers of *its own script

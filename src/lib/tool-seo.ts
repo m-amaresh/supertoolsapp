@@ -191,6 +191,14 @@ export const TOOL_INTENT_KEYWORDS: Record<string, string[]> = {
     "remove pdf restrictions",
     "pdf unlocker no upload",
   ],
+  "/tools/pdf/merge": [
+    "merge pdf",
+    "combine pdf",
+    "pdf merger",
+    "join pdf files",
+    "merge pdf offline",
+    "pdf merger no upload",
+  ],
 };
 
 export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
@@ -1358,6 +1366,55 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
         question: "Is there a file size limit?",
         answer:
           "Files up to 100 MB are accepted. The limit exists because the PDF is held in browser memory during decryption, and larger files would risk exhausting the tab.",
+      },
+    ],
+  },
+  "/tools/pdf/merge": {
+    title: "PDF Merger FAQ",
+    about:
+      "Combine several PDF files into a single document entirely inside your browser. Add the files, drag them into the order you want, and the tool concatenates their pages into one PDF you can download. Merging runs through a WebAssembly build of qpdf, the long-standing open-source PDF toolkit, executing in a Web Worker on your own device. Most online PDF mergers upload every file to a server, which means handing contracts, statements, scans and other confidential documents to a third party purely to staple them together. This tool never transmits them. Page content, annotations and form fields are copied across, and the merged document inherits the bookmarks and metadata of the first file in the list. The result is always unencrypted, so a document that restricts printing cannot pass that restriction on to the pages it is merged with.",
+    howToUse: [
+      "Drop your PDFs onto the upload area, or choose files from your device.",
+      "Add as many files as you need — they queue up rather than replacing each other.",
+      "Use the up and down arrows to put the documents in the order you want them.",
+      "Remove any file you added by mistake with the cross beside it.",
+      "Select Merge PDFs, then download the combined document.",
+    ],
+    items: [
+      {
+        question: "Are my PDFs uploaded to a server?",
+        answer:
+          "No. Every file is read directly in your browser and combined by a WebAssembly module running in a Web Worker on your device. Nothing is transmitted anywhere, and the worker is terminated as soon as the merged file is ready.",
+      },
+      {
+        question: "In what order are the pages combined?",
+        answer:
+          "Top to bottom, exactly as the list shows. Each document contributes all of its pages, in its own page order, before the next document begins. Use the up and down arrows to rearrange the list before merging.",
+      },
+      {
+        question: "Can I merge a password-protected PDF?",
+        answer:
+          "If it needs a password to open, no — the merge stops and names the file responsible. Remove the protection first with the PDF Password Remover, which also runs entirely in your browser, then add the unlocked file to the list. A PDF that opens without a prompt but restricts printing or editing does merge, and the tool tells you that the restriction was removed: the merged file is always unencrypted, so one restricted document cannot impose its limits on everything merged with it.",
+      },
+      {
+        question: "How many files can I merge at once?",
+        answer:
+          "Up to 50 files per merge, each up to 100 MB, with a combined total of 200 MB. The limits exist because every input and the output are held in browser memory at the same time, and larger jobs would risk exhausting the tab.",
+      },
+      {
+        question: "Are bookmarks and metadata preserved?",
+        answer:
+          "Partly. Page content, annotations and form fields are carried over from every file. Bookmarks (document outlines) and document-level metadata come from the first file in the list only — the bookmarks of later files are dropped, which is a known limitation of qpdf's page-assembly mode. If bookmarks matter, put the document whose outline you want to keep first.",
+      },
+      {
+        question: "Can I merge the same PDF twice?",
+        answer:
+          "Yes. Adding a file again queues it as a separate entry, so you can repeat a cover sheet or a terms page wherever you need it in the sequence.",
+      },
+      {
+        question: "Does merging reduce the quality of the pages?",
+        answer:
+          "No. Pages are copied, not re-rendered, so text stays selectable and images keep their original resolution. The file size may differ slightly from the sum of the inputs because streams are rewritten and shared resources are consolidated.",
       },
     ],
   },

@@ -13,7 +13,7 @@ Examples include:
 - JSON, YAML, CSV, and diff input
 - tokens, secrets, ciphertext, and passphrases
 - generated passwords and UUIDs
-- PDF files and the passwords used to unlock them
+- PDF files, the passwords used to unlock them, and the documents combined by the merger
 
 ## What This Promise Does Mean
 
@@ -45,24 +45,26 @@ Policy:
 
 If you add telemetry, keep that boundary intact.
 
-## PDF Unlocking
+## The PDF Tools
 
-The PDF password remover is worth calling out, because it is the category where
-hosted tools most often claim privacy they do not deliver. Most online PDF
-unlockers upload the document *and its password* to a server.
+The PDF password remover and the PDF merger are worth calling out, because this
+is the category where hosted tools most often claim privacy they do not deliver.
+Most online PDF unlockers upload the document *and its password* to a server,
+and most online mergers upload every file you want combined — contracts,
+statements, scans — purely to staple them together.
 
-This one does not. The file is read with `File.arrayBuffer()`, transferred into a
-Web Worker, and decrypted there by a WebAssembly build of qpdf. Specifically:
+These do not. Each file is read with `File.arrayBuffer()`, transferred into a
+Web Worker, and processed there by a WebAssembly build of qpdf. Specifically:
 
-- neither the PDF nor the password is ever sent over the network
+- neither the PDFs nor any password is ever sent over the network
 - the worker is created per attempt and terminated as soon as it answers, which
-  releases the WASM memory holding the file
-- the decrypted result is handed back as a blob URL that is revoked when you
-  clear the tool or leave the page
+  releases the WASM memory holding the files
+- the result is handed back as a blob URL that is revoked when you clear the
+  tool or leave the page
 - `qpdf.wasm` is served same-origin from `public/pdf/`, so `connect-src 'self'`
   remains unchanged and there is no CDN in the path
 
-Once the page and the engine have loaded, unlocking works with no network
+Once the page and the engine have loaded, both tools work with no network
 connection at all.
 
 ## Browser Storage
