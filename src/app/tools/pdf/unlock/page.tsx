@@ -5,7 +5,6 @@ import { faEye } from "@fortawesome/free-solid-svg-icons/faEye";
 import { faEyeSlash } from "@fortawesome/free-solid-svg-icons/faEyeSlash";
 import { faFilePdf } from "@fortawesome/free-solid-svg-icons/faFilePdf";
 import { faLockOpen } from "@fortawesome/free-solid-svg-icons/faLockOpen";
-import { faShieldHalved } from "@fortawesome/free-solid-svg-icons/faShieldHalved";
 import { faUpload } from "@fortawesome/free-solid-svg-icons/faUpload";
 import { faXmark } from "@fortawesome/free-solid-svg-icons/faXmark";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -23,7 +22,6 @@ import {
   ToolStatusStack,
   ToolToolbar,
 } from "@/components/tool/ToolScaffold";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -145,6 +143,17 @@ export default function PdfUnlockTool() {
     },
     [clearResult],
   );
+
+  /**
+   * Opens the native file picker.
+   *
+   * The visible control has to be a real `<button>`: a `<label>` is not
+   * focusable, and the input it points at is `display: none`, so neither was
+   * reachable by Tab — the whole workflow was unusable from the keyboard.
+   */
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const handleFileInput = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -287,20 +296,21 @@ export default function PdfUnlockTool() {
       <ToolCard>
         <ToolToolbar>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <label htmlFor="pdf-upload" className="cursor-pointer">
-                <FontAwesomeIcon
-                  icon={faUpload}
-                  className="h-3 w-3"
-                  aria-hidden="true"
-                />
-                Choose PDF
-              </label>
+            <Button type="button" variant="ghost" onClick={openFilePicker}>
+              <FontAwesomeIcon
+                icon={faUpload}
+                className="h-3 w-3"
+                aria-hidden="true"
+              />
+              Choose PDF
             </Button>
 
+            {/* Driven entirely by `openFilePicker`; kept out of the tab
+                order because the buttons above are the real controls. */}
             <input
               id="pdf-upload"
               ref={fileInputRef}
+              tabIndex={-1}
               type="file"
               accept="application/pdf,.pdf"
               className="hidden"
@@ -374,20 +384,7 @@ export default function PdfUnlockTool() {
               end of the flow instead of above the inputs that gate it. */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                <ToolLabel className="mb-0">Encrypted PDF</ToolLabel>
-                <Badge
-                  variant="outline"
-                  className="gap-1.5 border-success/25 bg-success-muted py-1 text-success-foreground"
-                >
-                  <FontAwesomeIcon
-                    icon={faShieldHalved}
-                    className="h-3 w-3"
-                    aria-hidden="true"
-                  />
-                  Processed locally · No upload
-                </Badge>
-              </div>
+              <ToolLabel>Encrypted PDF</ToolLabel>
               {/** biome-ignore lint/a11y/noStaticElementInteractions: drop zone
                * duplicates the always-available "Choose PDF" button and the
                * keyboard-reachable label inside it. */}
@@ -420,12 +417,13 @@ export default function PdfUnlockTool() {
                   <>
                     <span className="text-[13px] text-foreground">
                       Drop a PDF here, or{" "}
-                      <label
-                        htmlFor="pdf-upload"
-                        className="cursor-pointer underline underline-offset-2"
+                      <button
+                        type="button"
+                        onClick={openFilePicker}
+                        className="cursor-pointer underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
                         choose a file
-                      </label>
+                      </button>
                     </span>
                     <ToolMeta>Up to {formatBytes(MAX_PDF_BYTES)}</ToolMeta>
                   </>
