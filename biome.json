@@ -14,7 +14,8 @@
       "!dist",
       "!build",
       "!.pnpm-store",
-      "!.devcontainer"
+      "!.devcontainer",
+      "!public/consent"
     ]
   },
   "formatter": {
