@@ -10,8 +10,27 @@
  * writes a plain PDF. It is not a password recovery or cracking tool.
  */
 
-/** Largest PDF we accept. qpdf holds the file in WASM memory twice (in + out). */
-export const MAX_PDF_BYTES = 100 * 1024 * 1024;
+import {
+  extractWarnings,
+  formatBytes,
+  isQpdfSuccess,
+  looksLikePdf,
+  MAX_PDF_BYTES,
+  redactQpdfSecrets,
+  stripProgramPrefix,
+} from "./qpdf";
+
+// Re-exported so this module stays the single import for the unlock tool and
+// its tests. The implementations are shared with the merge tool — see qpdf.ts.
+export {
+  extractWarnings,
+  formatBytes,
+  isQpdfSuccess,
+  looksLikePdf,
+  MAX_PDF_BYTES,
+  redactQpdfSecrets,
+  stripProgramPrefix,
+};
 
 /** Passwords longer than this are rejected before reaching the worker. */
 export const MAX_PASSWORD_LENGTH = 2048;
@@ -130,48 +149,6 @@ export function describeEncryption(info: PdfEncryptionInfo | null): string {
     : cipher;
 }
 
-const PDF_HEADER = "%PDF-";
-
-/**
- * qpdf exits 0 on success and 3 when the operation succeeded but printed
- * warnings — a cross-reference table it had to repair, say. Both leave usable
- * output, so only anything else is a real failure. `public/pdf/qpdf-worker.js`
- * mirrors this to decide whether to continue past the inspect pass.
- */
-export function isQpdfSuccess(exitCode: number): boolean {
-  return exitCode === 0 || exitCode === 3;
-}
-
-/**
- * `qpdf --show-encryption` prints the document's own user password when the
- * owner password is the one supplied. Nothing here needs it, and it would
- * otherwise sit in the details panel in plain text, so scrub it before any raw
- * output is kept for display.
- */
-export function redactQpdfSecrets(output: string): string {
-  return output.replace(
-    /^([^\n]*?\b(?:user password|encryption key)\s*=\s*).*$/gim,
-    "$1[hidden]",
-  );
-}
-
-/**
- * qpdf prefixes messages with its argv[0], which under Emscripten is whatever
- * the host page happened to be called. Strip it so errors read cleanly.
- */
-export function stripProgramPrefix(line: string): string {
-  return line.replace(/^[^\s:]*:\s*/, "").trim();
-}
-
-/** True when the buffer starts with a PDF header, allowing leading junk bytes. */
-export function looksLikePdf(bytes: Uint8Array): boolean {
-  // The spec requires %PDF- at byte 0, but real files often carry a preamble,
-  // and qpdf itself scans the first 1024 bytes. Match that tolerance.
-  const window = bytes.subarray(0, 1024);
-  const text = String.fromCharCode(...window);
-  return text.includes(PDF_HEADER);
-}
-
 /**
  * Classify qpdf's combined stdout/stderr into an actionable error.
  * Ordering matters: password failures are checked first because a wrong
@@ -244,32 +221,6 @@ export function classifyQpdfError(
  */
 export function isNotEncrypted(output: string): boolean {
   return /file is not encrypted/i.test(output);
-}
-
-/**
- * qpdf names the file it is complaining about, which is the worker's scratch
- * path rather than anything the reader chose. Strip it.
- */
-const WORKER_FILE_PREFIX = /^(?:in|out)\.pdf:\s*/i;
-
-/** Pull non-fatal WARNING lines out of qpdf output. */
-export function extractWarnings(output: string): string[] {
-  const warnings = output
-    .split("\n")
-    // The label, not the bare word: qpdf ends a run that warned with the
-    // summary line "operation succeeded with warnings", which is a status
-    // report rather than a warning of its own.
-    .filter((line) => /\bwarning:/i.test(line))
-    .map((line) =>
-      stripProgramPrefix(line)
-        .replace(/^WARNING:\s*/i, "")
-        .replace(WORKER_FILE_PREFIX, "")
-        .trim(),
-    )
-    .filter((line) => line.length > 0);
-
-  // Both passes read the same file, so a structural problem is reported twice.
-  return [...new Set(warnings)];
 }
 
 /**
@@ -351,13 +302,6 @@ export function unlockedFileName(originalName: string): string {
   const withoutExtension = trimmed.replace(/\.pdf$/i, "");
   const base = withoutExtension.length > 0 ? withoutExtension : "unlocked";
   return `${base}-unlocked.pdf`;
-}
-
-/** Human-readable byte size for the UI. */
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
 
 /**
