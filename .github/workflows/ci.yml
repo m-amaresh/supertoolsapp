@@ -65,13 +65,16 @@ jobs:
         run: pnpm -s build
 
       - name: Install Chromium for layout tests
+        # Preview is the E2E gate; promoting it to main does not rerun browsers.
+        if: github.ref == 'refs/heads/preview' || github.base_ref == 'preview'
         run: pnpm -s exec playwright-core install --with-deps chromium
 
       - name: Layout and behaviour tests
+        if: github.ref == 'refs/heads/preview' || github.base_ref == 'preview'
         run: pnpm -s test:e2e
 
       - name: Upload layout test results artifact
-        if: always()
+        if: always() && (github.ref == 'refs/heads/preview' || github.base_ref == 'preview')
         uses: actions/upload-artifact@v7
         with:
           name: vitest-e2e-results
