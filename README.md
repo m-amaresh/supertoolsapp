@@ -61,7 +61,7 @@ Open `http://localhost:3100`.
 
 Tool payloads — JSON, YAML, CSV, regex input, secrets, tokens, ciphertext, passphrases, generated passwords, uploaded files — are processed locally in the browser. The app does not send them to any backend service.
 
-Network activity is limited to serving app assets (HTML, JS, CSS, fonts), optional Vercel analytics metadata, and — where a measurement ID is configured — Google Analytics behind a cookie banner. The important boundary is between *serving the app* and *processing your data*: analytics counts page views, and never sees what you paste into a tool.
+Network activity is limited to serving app assets (HTML, JS, CSS, fonts), optional Vercel analytics metadata, and — where a measurement ID is configured — Google Analytics with a cookie preference banner and cookieless measurement before acceptance. The important boundary is between *serving the app* and *processing your data*: analytics counts page views, and never sees what you paste into a tool.
 
 Full policy: [docs/privacy.md](docs/privacy.md)
 
@@ -104,7 +104,7 @@ Local development works without configuration.
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SITE_URL` | Canonical metadata, sitemap output, and structured data. Set this for any real deployment. |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 measurement ID (`G-XXXXXXXXXX`). **Leave unset and there is no Google Analytics, no cookie banner, and no CSP relaxation at all** — the build stays same-origin only. |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | GA4 measurement ID (`G-XXXXXXXXXX`). **Disabled on Vercel preview deployments. Leave unset and there is no Google Analytics, no cookie banner, and no CSP relaxation at all** — the build stays same-origin only. |
 
 The measurement ID is validated, not just read: a malformed value is treated as unset, so a typo cannot ship a cookie banner that reports to nothing.
 

@@ -1,24 +1,16 @@
 /**
- * Google Analytics 4 and cookie consent, in one place.
+ * GA4 configuration and the Consent Mode bootstrap. Vercel runs independently.
  *
- * Everything here is framework- and DOM-independent so it can be unit tested.
- * The components that use it are thin.
- *
- * The site runs Consent Mode v2 with everything defaulted to **denied**:
- * `gtag.js` loads on every page, but it is told up front that it may not use
- * storage, and only a deliberate acceptance in the banner lifts that. Nothing
- * is written to the visitor's device until then.
+ * Server- and build-time only. `isAnalyticsConfigured` reads `VERCEL_ENV`, which
+ * is not a `NEXT_PUBLIC_` variable and therefore reads as `undefined` in a
+ * browser — so importing this module from a client component would make it
+ * quietly report "configured" on preview deployments. The constants the banner
+ * needs live in `analytics-consent.ts` precisely so it never has to.
  */
+import { ANALYTICS_CONSENT_KEY } from "./analytics-consent";
 
-/**
- * GA4 measurement ID, inlined at build time.
- *
- * Unset means no analytics at all — no gtag, no banner, and no CSP relaxation.
- * That is the default for local development and for anyone running their own
- * copy, so a fork does not silently report to this project's property.
- */
 export const GA_MEASUREMENT_ID =
-  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "";
+  process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.trim() ?? "";
 
 /** GA4 IDs look like `G-XXXXXXXXXX`. A stream ID or a UA- tag is not one. */
 export function isValidMeasurementId(id: string): boolean {
@@ -32,19 +24,13 @@ export function isValidMeasurementId(id: string): boolean {
  * gtag.js, relax the CSP and show a cookie banner while reporting to nothing.
  */
 export function isAnalyticsConfigured(id: string = GA_MEASUREMENT_ID): boolean {
-  return isValidMeasurementId(id);
+  return (
+    process.env.VERCEL_ENV?.trim() !== "preview" && isValidMeasurementId(id)
+  );
 }
 
-/**
- * Consent Mode v2 signals, all denied except the two that cannot carry
- * tracking: `security_storage` (CSRF and abuse prevention) and
- * `functionality_storage`, which here is only the theme preference.
- *
- * `wait_for_update` holds GA's first hit briefly so a returning visitor whose
- * stored choice is "granted" is not measured as denied before the banner has
- * had a chance to restore it.
- */
-export const CONSENT_DEFAULTS: Readonly<Record<string, string | number>> = {
+/** Optional storage starts denied; essential functionality remains available. */
+export const CONSENT_DEFAULTS: Readonly<Record<string, string>> = {
   ad_storage: "denied",
   ad_user_data: "denied",
   ad_personalization: "denied",
@@ -52,14 +38,7 @@ export const CONSENT_DEFAULTS: Readonly<Record<string, string | number>> = {
   personalization_storage: "denied",
   functionality_storage: "granted",
   security_storage: "granted",
-  wait_for_update: 500,
 };
-
-/** The gtag signal the banner's analytics toggle controls. */
-export const ANALYTICS_CONSENT_SIGNAL = "analytics_storage";
-
-/** Where the visitor's choice is kept. Namespaced so it is recognisable. */
-export const CONSENT_NAMESPACE = "supertools_consent";
 
 /**
  * The inline script that must run *before* gtag.js.
@@ -70,23 +49,26 @@ export const CONSENT_NAMESPACE = "supertools_consent";
  * who never agreed to be measured.
  */
 export function buildConsentBootstrap(id: string): string {
+  if (!isValidMeasurementId(id)) throw new Error("Invalid GA4 measurement ID");
   const defaults = JSON.stringify(CONSENT_DEFAULTS);
   return [
     "window.dataLayer=window.dataLayer||[];",
     "function gtag(){dataLayer.push(arguments);}",
-    `gtag('consent','default',${defaults});`,
+    `var consentDefaults=${defaults};`,
+    `try{if(localStorage.getItem(${JSON.stringify(ANALYTICS_CONSENT_KEY)})==='true')consentDefaults.analytics_storage='granted';}catch(e){}`,
+    "gtag('consent','default',consentDefaults);",
     "gtag('js',new Date());",
     // No `anonymize_ip`: that is a Universal Analytics setting. GA4 ignores it
     // and drops the IP unconditionally after deriving coarse geography, so
     // passing it anonymises nothing and lands on every hit as a meaningless
     // custom event parameter (`ep.anonymize_ip=true`, visible on the wire).
-    `gtag('config','${id}');`,
+    `gtag('config',${JSON.stringify(id.trim())},{allow_google_signals:false,allow_ad_personalization_signals:false});`,
   ].join("");
 }
 
 /** Source URL for the GA library. */
 export function gtagScriptUrl(id: string): string {
-  return `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;
+  return `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id.trim())}`;
 }
 
 /**

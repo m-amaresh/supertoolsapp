@@ -65,6 +65,14 @@ export function Footer() {
                   Privacy
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/cookies"
+                  className="inline-flex min-h-6 items-center text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Cookies
+                </Link>
+              </li>
               {isAnalyticsConfigured() && (
                 <li>
                   <CookiePreferencesButton />

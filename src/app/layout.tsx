@@ -6,6 +6,7 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { ConsentManager } from "@/components/ConsentManager";
 import { Footer } from "@/components/Footer";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { GA_MEASUREMENT_ID, isAnalyticsConfigured } from "@/lib/analytics";
 import { GLOBAL_KEYWORDS } from "@/lib/seo";
@@ -73,17 +74,16 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${inter.variable} ${ibmPlexMono.variable}`}>
+        {isAnalyticsConfigured() && (
+          <GoogleAnalytics measurementId={GA_MEASUREMENT_ID} />
+        )}
         <ThemeProvider>
           <AppShell footer={<Footer />}>{children}</AppShell>
         </ThemeProvider>
-        {/* Vercel's analytics are cookieless and store nothing on the
-            device, so they are not gated behind the banner. Google Analytics
-            is, and does not render at all without a measurement ID. */}
+        {/* Vercel measurement runs independently of Google cookie consent. */}
         <Analytics />
         <SpeedInsights />
-        {isAnalyticsConfigured() && (
-          <ConsentManager measurementId={GA_MEASUREMENT_ID} />
-        )}
+        {isAnalyticsConfigured() && <ConsentManager />}
       </body>
     </html>
   );

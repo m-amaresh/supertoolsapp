@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CookiePreferencesButton } from "@/components/CookiePreferencesButton";
 import { isAnalyticsConfigured } from "@/lib/analytics";
 import { getSiteUrl } from "@/lib/site";
 
@@ -84,49 +85,55 @@ export default function PrivacyPage() {
               Analytics
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-              This deployment uses Vercel Analytics and Speed Insights, which
-              record aggregate page views and performance timings. They are
-              cookieless — they store nothing on your device — which is why they
-              are not part of the cookie banner. They do not receive the
-              contents of any tool input, and there is no account system, so
-              nothing you do here is tied to an identity.
+              Vercel Analytics and Speed Insights record page views and
+              performance timings without cookies. Web Analytics uses a
+              temporary hash derived from the request to distinguish visitors.
+              These services run independently of your Google Analytics cookie
+              preference. Tool input is not included in these measurements.
             </p>
             {isAnalyticsConfigured() && (
               <>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  This deployment also uses Google Analytics, and it is off
-                  until you turn it on. The site runs Google Consent Mode v2
-                  with every signal — analytics, advertising, personalisation —
-                  set to denied before Google&rsquo;s script is given anything
-                  to act on. No analytics cookie is written unless you accept.
-                  You can change your mind at any time through{" "}
-                  <span className="text-foreground">Cookie preferences</span> in
-                  the footer of any page.
+                  Google Analytics loads before you answer the banner. Before
+                  you allow analytics cookies, and when you decline, it sends
+                  limited page-view and engagement measurements without reading
+                  or writing analytics cookies. Requests can include page URLs,
+                  referrers, browser information and temporary values. Google
+                  receives your IP address when your browser connects.
                 </p>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  Being precise about what declining still does: Google&rsquo;s
-                  script is still loaded, and a declined session still reports
-                  one page view. It carries the page address and title, your
-                  screen size, language, browser and platform, your IP as any
-                  request does, and a client identifier — together with a flag
-                  telling Google you refused storage. Because no cookie is
-                  written, that identifier is regenerated on every page load, so
-                  it cannot link your visits together.
+                  Allowing analytics cookies lets Google recognise returning
+                  visits and connect activity across pages. Google can set _ga
+                  and _ga_ followed by the measurement stream ID. These cookies
+                  normally expire after two years, subject to browser limits and
+                  Google settings. Advertising features are disabled.
                 </p>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  If you want no contact with Google at all, block{" "}
-                  <code className="font-mono text-[13px] text-foreground">
-                    googletagmanager.com
-                  </code>{" "}
-                  — every tool on this site keeps working without it.
+                  You can turn Analytics cookies off and save using Cookie
+                  preferences below or in the footer. This updates consent in
+                  other open tabs on this origin and removes existing GA cookies
+                  for this site. Cookieless Google and Vercel measurement
+                  continues. It does not reload the page or delete previously
+                  collected data.
                 </p>
+                <div className="mt-2">
+                  <CookiePreferencesButton />
+                </div>
                 <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-                  Analytics sees which pages are visited. It never sees what you
-                  put into a tool: that is processed in your browser and is not
-                  sent anywhere, whether you accept or decline.
+                  Analytics does not receive what you put into a tool. Tool
+                  input is processed in your browser. Every tool also works if
+                  Google's script is blocked.
                 </p>
               </>
             )}
+            <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+              <Link
+                href="/cookies"
+                className="text-foreground underline underline-offset-2 hover:text-primary"
+              >
+                About cookie preferences
+              </Link>
+            </p>
           </section>
 
           <section>
@@ -177,6 +184,15 @@ export default function PrivacyPage() {
                 : " plus the browser's ordinary cache of the site's assets."}{" "}
               Tool input is not persisted between visits.
             </p>
+            {isAnalyticsConfigured() && (
+              <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+                Silktide stores preferences in localStorage under keys beginning
+                stcm.supertools_consent., including a necessary-storage flag
+                before you answer. Your analytics consent state is communicated
+                to Google. Your choice is specific to this browser and site
+                origin; clearing site storage resets it.
+              </p>
+            )}
           </section>
 
           <section>

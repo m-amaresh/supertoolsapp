@@ -6,7 +6,7 @@ import { resolveChromiumPath } from "./chromium";
 import { type RunningServer, startProductionServer } from "./server";
 
 /**
- * Google Analytics behind the consent banner.
+ * Google Analytics cookie consent and preference controls.
  *
  * The invariant worth guarding is an ordering one, and it is invisible in code
  * review: gtag.js replays whatever is already on `dataLayer`, so if the
@@ -14,9 +14,8 @@ import { type RunningServer, startProductionServer } from "./server";
  * never agreed is measured anyway. Nothing about that shows up as an error.
  *
  * Requests to googletagmanager.com are blocked throughout, so the suite makes
- * no external calls. That costs nothing: `gtag` is our own inline stub that
- * pushes to `dataLayer`, so every assertion below is about what the site
- * queued, which is exactly what Google would have replayed.
+ * no Google calls. These assertions verify the consent commands the app queues
+ * and the real banner UI; they do not verify Google delivery or reporting.
  */
 
 const BANNER = "#stcm-banner";
@@ -237,6 +236,113 @@ describe("cookie consent", () => {
         .click();
       await page.waitForTimeout(400);
       expect(await page.locator(MODAL).isVisible()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+  it("withdraws consent across tabs and deletes existing GA cookies", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      await page.locator(ACCEPT).click();
+      const other = await context.newPage();
+      await other.goto(server.baseUrl, { waitUntil: "networkidle" });
+      expect(
+        (await consentCalls(other)).at(-1)?.payload.analytics_storage,
+      ).toBe("granted");
+      await context.addCookies([
+        { name: "_ga", value: "test", url: server.baseUrl },
+        { name: "_ga_TEST1234567", value: "test", url: server.baseUrl },
+        { name: "unrelated", value: "keep", url: server.baseUrl },
+      ]);
+      await page
+        .getByRole("button", { name: "Cookie preferences", exact: true })
+        .click();
+      await page.locator('label[for="consent-analytics"]').click();
+      await page.locator(".stcm-modal-save").click();
+      await expect
+        .poll(
+          async () =>
+            (await consentCalls(other)).at(-1)?.payload.analytics_storage,
+        )
+        .toBe("denied");
+      expect((await consentCalls(page)).at(-1)?.payload.analytics_storage).toBe(
+        "denied",
+      );
+      expect((await context.cookies()).map((cookie) => cookie.name)).toEqual([
+        "unrelated",
+      ]);
+      await page.reload({ waitUntil: "networkidle" });
+      expect((await consentCalls(page)).at(-1)?.payload.analytics_storage).toBe(
+        "denied",
+      );
+      expect(await page.locator(BANNER).isVisible()).toBe(false);
+      // Clearing storage in another tab must withdraw permission and restore the prompt.
+      await other.evaluate(() => localStorage.clear());
+      await expect.poll(() => page.locator(BANNER).isVisible()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("restores accepted consent before a delayed banner loads", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      await page.locator(ACCEPT).click();
+      await context.route("**/consent/silktide-consent-manager.js", (route) =>
+        route.abort(),
+      );
+      await page.reload({ waitUntil: "networkidle" });
+      const calls = await consentCalls(page);
+      expect(calls[0].action).toBe("default");
+      expect(calls[0].payload.analytics_storage).toBe("granted");
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("offers preferences on the cookies page", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      const enabled = await analyticsEnabled(page);
+      const response = await page.goto(`${server.baseUrl}/cookies`, {
+        waitUntil: "networkidle",
+      });
+      expect(response?.status()).toBe(200);
+      if (!enabled) {
+        expect(await page.locator("main").innerText()).toContain(
+          "Google Analytics is not enabled",
+        );
+        return;
+      }
+      await page.locator(REJECT).click();
+      await page
+        .locator("main")
+        .getByRole("button", { name: "Cookie preferences", exact: true })
+        .click();
+      expect(await page.locator(MODAL).isVisible()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("explains when the preference manager cannot load", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      await context.route("**/consent/silktide-consent-manager.js", (route) =>
+        route.abort(),
+      );
+      await page.reload({ waitUntil: "networkidle" });
+      const button = page.getByRole("button", {
+        name: "Cookie preferences",
+        exact: true,
+      });
+      await expect
+        .poll(() => page.getByRole("status").textContent())
+        .toContain("Preferences unavailable");
+      expect(await button.getAttribute("aria-disabled")).toBe("true");
     } finally {
       await context.close();
     }

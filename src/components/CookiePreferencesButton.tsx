@@ -1,25 +1,51 @@
 "use client";
 
-import { openCookiePreferences } from "@/components/ConsentManager";
+import { useId, useSyncExternalStore } from "react";
+import {
+  getConsentStatus,
+  getServerConsentStatus,
+  subscribeConsentStatus,
+} from "@/lib/analytics-consent";
 
-/**
- * Reopens the consent dialog from the footer.
- *
- * A client island so `Footer` itself stays a server component — the rest of
- * that link block is rendered on the server and kept out of the client bundle.
- *
- * Consent that cannot be withdrawn as easily as it was given is not consent,
- * so this sits beside Privacy on all 46 routes rather than behind a floating
- * icon that only appears on some.
- */
-export function CookiePreferencesButton() {
+/** Shared state and fallback for footer, privacy page and preferences page. */
+export function CookiePreferencesButton({ className }: { className?: string }) {
+  const status = useSyncExternalStore(
+    subscribeConsentStatus,
+    getConsentStatus,
+    getServerConsentStatus,
+  );
+  const messageId = useId();
   return (
-    <button
-      type="button"
-      onClick={openCookiePreferences}
-      className="inline-flex min-h-6 items-center text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground"
-    >
-      Cookie preferences
-    </button>
+    <span>
+      <button
+        type="button"
+        aria-disabled={status !== "ready"}
+        aria-busy={status === "loading"}
+        aria-describedby={status === "unavailable" ? messageId : undefined}
+        className={`${className ?? ""} inline-flex min-h-6 items-center text-left text-[13px] text-muted-foreground transition-colors hover:text-foreground aria-disabled:opacity-50 aria-disabled:cursor-not-allowed`}
+        onClick={() => {
+          if (status === "ready")
+            window.silktideConsentManager?.getInstance()?.toggleModal(true);
+        }}
+      >
+        Cookie preferences
+      </button>
+      {status === "unavailable" ? (
+        <span
+          id={messageId}
+          role="status"
+          className="mt-2 block text-sm text-muted-foreground"
+        >
+          Preferences unavailable. Reload to try again. To reset a saved choice,
+          clear this site’s data in your browser settings.
+        </span>
+      ) : null}
+      <noscript>
+        <span className="block text-sm normal-case tracking-normal">
+          Enable JavaScript to change preferences, or clear this site’s data in
+          your browser settings.
+        </span>
+      </noscript>
+    </span>
   );
 }

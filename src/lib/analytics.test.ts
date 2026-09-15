@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { runInNewContext } from "node:vm";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
-  ANALYTICS_CONSENT_SIGNAL,
   buildConsentBootstrap,
   CONSENT_DEFAULTS,
   GA_CONNECT_HOSTS,
@@ -9,6 +9,12 @@ import {
   isAnalyticsConfigured,
   isValidMeasurementId,
 } from "./analytics";
+import {
+  ANALYTICS_CONSENT_KEY,
+  ANALYTICS_CONSENT_SIGNAL,
+} from "./analytics-consent";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("analytics: measurement id", () => {
   it("accepts a GA4 id", () => {
@@ -58,10 +64,6 @@ describe("analytics: consent mode defaults", () => {
     expect(CONSENT_DEFAULTS.security_storage).toBe("granted");
     expect(CONSENT_DEFAULTS.functionality_storage).toBe("granted");
   });
-
-  it("holds the first hit so a stored choice can be restored", () => {
-    expect(CONSENT_DEFAULTS.wait_for_update).toBeGreaterThan(0);
-  });
 });
 
 describe("analytics: bootstrap script", () => {
@@ -110,5 +112,67 @@ describe("analytics: external hosts", () => {
 
   it("controls the signal the banner toggles", () => {
     expect(ANALYTICS_CONSENT_SIGNAL).toBe("analytics_storage");
+  });
+});
+
+function replayBootstrap(saved: string | null, storageThrows = false) {
+  const context = {
+    window: {},
+    dataLayer: [] as unknown[][],
+    localStorage: {
+      getItem(key: string) {
+        expect(key).toBe(ANALYTICS_CONSENT_KEY);
+        if (storageThrows) throw new Error("Storage blocked");
+        return saved;
+      },
+    },
+  };
+  runInNewContext(buildConsentBootstrap("  G-ABC1234567  "), context);
+  return context.dataLayer.map((args) => Array.from(args));
+}
+
+describe("analytics: restoring consent before Google configuration", () => {
+  it.each([null, "false", "invalid"])(
+    "denies storage for saved value %s",
+    (saved) => {
+      expect(replayBootstrap(saved)[0]).toEqual([
+        "consent",
+        "default",
+        expect.objectContaining({ analytics_storage: "denied" }),
+      ]);
+    },
+  );
+  it("restores an existing namespaced grant in the first consent command", () => {
+    const commands = replayBootstrap("true");
+    expect(commands[0]).toEqual([
+      "consent",
+      "default",
+      expect.objectContaining({
+        analytics_storage: "granted",
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+      }),
+    ]);
+    expect(commands[2]).toEqual([
+      "config",
+      "G-ABC1234567",
+      {
+        allow_google_signals: false,
+        allow_ad_personalization_signals: false,
+      },
+    ]);
+  });
+  it("continues with denied storage when browser storage is unavailable", () => {
+    expect(replayBootstrap(null, true)[0][2]).toMatchObject({
+      analytics_storage: "denied",
+    });
+  });
+  it("rejects unsafe identifiers even when called directly", () => {
+    expect(() => buildConsentBootstrap("G-ABC123</script>")).toThrow();
+  });
+  it("disables Google on preview deployments even with a valid ID", () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    expect(isAnalyticsConfigured("G-ABC1234567")).toBe(false);
   });
 });
