@@ -482,7 +482,7 @@ export default function HashGenerator() {
             <div className="border-t border-border">
               <div className="flex items-center justify-between px-4 py-3">
                 <ToolMeta>Hash Results</ToolMeta>
-                {hashes && <CopyButton text={allHashesText} />}
+                <CopyButton text={allHashesText} />
               </div>
               <div className="divide-y divide-border">
                 {hashAlgorithms.map((alg) => (
