@@ -191,6 +191,14 @@ export const TOOL_INTENT_KEYWORDS: Record<string, string[]> = {
     "remove pdf restrictions",
     "pdf unlocker no upload",
   ],
+  "/tools/pdf/encrypt": [
+    "password protect pdf",
+    "add password to pdf",
+    "encrypt pdf",
+    "lock pdf with password",
+    "pdf permissions",
+    "protect pdf no upload",
+  ],
   "/tools/pdf/merge": [
     "merge pdf",
     "combine pdf",
@@ -1366,6 +1374,72 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
         question: "Is there a file size limit?",
         answer:
           "Files up to 100 MB are accepted. The limit exists because the PDF is held in browser memory during decryption, and larger files would risk exhausting the tab.",
+      },
+    ],
+  },
+  "/tools/pdf/encrypt": {
+    title: "PDF Password Protector FAQ",
+    about:
+      "Add password protection to a PDF entirely inside your browser. Choose a password, optionally restrict printing, copying, editing and commenting, and the tool writes an encrypted copy that no reader will open without the password. Encryption runs through a WebAssembly build of qpdf, the long-standing open-source PDF toolkit, executing in a Web Worker on your own device. Most online PDF protection services upload your file to a server, which means handing a confidential document to a third party and trusting them with the password you chose for it. This tool transmits neither. The default is AES-256, the strongest encryption the PDF format defines, with AES-128 available when a document has to open in much older software.",
+    howToUse: [
+      "Drop your PDF onto the upload area, or choose a file from your device.",
+      "Type the password readers will need to open the document, then confirm it.",
+      "Leave the encryption on AES-256 unless the file must open in very old software.",
+      "Clear any of the Allow boxes to restrict printing, copying, editing or commenting.",
+      "Select Protect PDF, then download the encrypted copy.",
+    ],
+    items: [
+      {
+        question: "Is my PDF uploaded to a server?",
+        answer:
+          "No. The file is read directly in your browser and encrypted by a WebAssembly module running in a Web Worker on your device. Neither the PDF nor the password is transmitted anywhere, and the worker is terminated as soon as the result is ready.",
+      },
+      {
+        question: "What happens if I forget the password?",
+        answer:
+          "The document becomes unreadable. This is real encryption with no recovery path and no backdoor — nobody, including us, can open the file without the password. Keep the original unprotected copy or store the password in a password manager before you close the page.",
+      },
+      {
+        question: "Which encryption does this use?",
+        answer:
+          "AES-256 by default, which is revision 6 of the PDF standard security handler and the strongest the format defines. AES-128 (revision 4) is offered for documents that must open in readers older than roughly 2009. RC4 and 40-bit encryption are deliberately not offered: they are broken rather than merely dated.",
+      },
+      {
+        question:
+          "What is the difference between the password and the permissions password?",
+        answer:
+          "The first password is required to open the document at all. The permissions password, called the owner password, lifts the restrictions you set. If you do not set a separate one, the open password is used for both — which means anyone who can open the document can also remove the restrictions. Set a different permissions password when recipients should be able to read but not unlock.",
+      },
+      {
+        question:
+          "Do the printing and copying restrictions actually stop anyone?",
+        answer:
+          "They are enforced by the reader, not by the cryptography. Compliant software such as Adobe Acrobat honours them, but the page content is still decrypted once the document is open, so tools that ignore the permission flags can bypass them. Treat restrictions as a clear statement of intent, and the open password as the control that actually protects the file.",
+      },
+      {
+        question: "Can I protect a PDF that already has a password?",
+        answer:
+          "Not directly. qpdf cannot add encryption to a file it cannot read, and silently replacing protection you may not know is there would be worse. Remove the existing password first with the PDF Password Remover, then protect the result here.",
+      },
+      {
+        question: "Does the whole password get used?",
+        answer:
+          "AES-256 hashes the first 127 bytes of the password as UTF-8. AES-128 is far tighter: it uses exactly 32 bytes and encodes them as PDFDocEncoding, so characters outside Latin-1 are mangled. The tool warns you when a password exceeds the limit for the encryption you picked. Readers truncate identically, so the document still opens with the full password you typed.",
+      },
+      {
+        question: "Does protecting the PDF change its contents?",
+        answer:
+          "Document content — text, images, and page structure — is preserved. qpdf rewrites the file with an encryption layer, so the internal file structure and size may change: streams are recompressed and objects can be renumbered. Keep your original until you have checked the protected copy opens as expected.",
+      },
+      {
+        question: "Does this work offline?",
+        answer:
+          "Yes. Once the page and its WebAssembly module have loaded, protecting a file requires no network connection at all.",
+      },
+      {
+        question: "Is there a file size limit?",
+        answer:
+          "Files up to 100 MB are accepted. The limit exists because the PDF is held in browser memory during encryption, and larger files would risk exhausting the tab.",
       },
     ],
   },

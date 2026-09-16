@@ -122,6 +122,11 @@ export const TOOL_FIXTURES: ToolFixture[] = [
       "needs a real encrypted PDF and a Web Worker; the attempt lifecycle is covered by pdf-lifecycle.test.ts instead",
   },
   {
+    route: "/tools/pdf/encrypt",
+    cannotDrive:
+      "needs a real PDF set on a file input and a Web Worker; the qpdf argument contract is driven against the real engine in pdf-encrypt-engine.test.ts instead",
+  },
+  {
     route: "/tools/pdf/merge",
     cannotDrive:
       "needs several real PDFs set on a file input, which this fixture cannot do; driven to a real result in pdf-merge.test.ts instead",

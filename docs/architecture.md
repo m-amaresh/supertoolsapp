@@ -86,7 +86,7 @@ Each rule notes where the codebase does not yet conform. Those lists are the rem
 - **Manual tools have exactly one filled `variant="default"` button**, labelled with the verb it performs, placed at the end of the input flow.
 - A button that recomputes what is already on screen is a lie about how the tool works. Do not add one.
 
-Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expensive), `pdf-unlock` (WASM plus a password) and `pdf-merge` (WASM over several files), `tls-cert` (parses a certificate chain on demand), `password`, `uuid` and `lorem` (generators — re-running is the point), `diff` (expensive on large inputs). Everything else is live.
+Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expensive), `pdf-unlock` and `pdf-encrypt` (WASM plus a password) and `pdf-merge` (WASM over several files), `tls-cert` (parses a certificate chain on demand), `password`, `uuid` and `lorem` (generators — re-running is the point), `diff` (expensive on large inputs). Everything else is live.
 
 *Conforming.* No live tool carries a filled button that recomputes what is already on screen. `timestamp`'s `Use current time` is a ghost convenience that fills the input. `qrcode` does keep a filled `SVG` button, which is correct — it exports a file rather than recomputing, and only appears once a code exists.
 
