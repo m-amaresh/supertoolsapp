@@ -5,6 +5,7 @@ import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resolveChromiumPath } from "./chromium";
+import { makePdf } from "./make-pdf";
 import { type RunningServer, startProductionServer } from "./server";
 
 /**
@@ -21,51 +22,6 @@ import { type RunningServer, startProductionServer } from "./server";
  * `--pages` that older documentation still shows — and a merger that silently
  * produced nothing would pass every unit test in the suite.
  */
-
-/** Minimal but valid PDF with a correct xref table, so qpdf merges it clean. */
-function makePdf(label: string, pageCount: number): Buffer {
-  const objects: string[] = [];
-  const pageNumbers: number[] = [];
-  const streams: [number, number, string][] = [];
-
-  let next = 3;
-  for (let i = 0; i < pageCount; i += 1) {
-    const contentNumber = next++;
-    const pageNumber = next++;
-    pageNumbers.push(pageNumber);
-    streams.push([contentNumber, pageNumber, `${label}${i + 1}`]);
-  }
-  const fontNumber = next++;
-
-  objects[1] = "<</Type/Catalog/Pages 2 0 R>>";
-  objects[2] = `<</Type/Pages/Kids[${pageNumbers
-    .map((n) => `${n} 0 R`)
-    .join(" ")}]/Count ${pageCount}>>`;
-  for (const [contentNumber, pageNumber, text] of streams) {
-    const stream = `BT /F1 24 Tf 20 100 Td (${text}) Tj ET\n`;
-    objects[contentNumber] =
-      `<</Length ${stream.length}>>\nstream\n${stream}endstream`;
-    objects[pageNumber] =
-      `<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents ${contentNumber} 0 R/Resources<</Font<</F1 ${fontNumber} 0 R>>>>>>`;
-  }
-  objects[fontNumber] = "<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>";
-
-  let body = "%PDF-1.4\n";
-  const offsets: number[] = [];
-  for (let i = 1; i < next; i += 1) {
-    offsets[i] = body.length;
-    body += `${i} 0 obj\n${objects[i]}\nendobj\n`;
-  }
-
-  const xrefStart = body.length;
-  body += `xref\n0 ${next}\n0000000000 65535 f \n`;
-  for (let i = 1; i < next; i += 1) {
-    body += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
-  }
-  body += `trailer<</Size ${next}/Root 1 0 R>>\nstartxref\n${xrefStart}\n%%EOF\n`;
-
-  return Buffer.from(body, "latin1");
-}
 
 /**
  * A PDF that opens with **no password** but forbids printing and editing.
