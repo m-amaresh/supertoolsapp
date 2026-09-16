@@ -1,0 +1,199 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { classifyPreviewError } from "@/lib/pdf-preview";
+
+/**
+ * Opens a PDF with pdf.js and keeps its lifetime tidy.
+ *
+ * Extracted when the merger needed cover thumbnails: both tools have to load a
+ * document, hold it while pages are drawn, and release it — and this is
+ * precisely the code that has gone wrong twice. A failed load leaked the
+ * worker its loading task owned, and a late rejection destroyed the task
+ * belonging to a *newer* file, taking down the replacement's preview. Neither
+ * is the sort of thing worth having two copies of.
+ *
+ * pdf.js is imported dynamically, so the ~1.6 MB renderer is fetched when
+ * someone actually picks a file rather than on every visit to the page.
+ */
+
+/** pdf.js types, kept local so the module's own types stay out of the bundle. */
+export interface PdfPageProxy {
+  getViewport: (options: { scale: number }) => {
+    width: number;
+    height: number;
+  };
+  render: (options: {
+    canvas: HTMLCanvasElement;
+    canvasContext: CanvasRenderingContext2D;
+    viewport: { width: number; height: number };
+  }) => { promise: Promise<void>; cancel: () => void };
+  cleanup: () => void;
+}
+
+export interface PdfDocumentProxy {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PdfPageProxy>;
+  destroy: () => Promise<void>;
+}
+
+/**
+ * The handle pdf.js returns before a document exists.
+ *
+ * It owns the worker, so it — not just the document — is what has to be
+ * destroyed. A load that *fails* never produces a document, and releasing only
+ * documents leaked a worker per failure: three malformed files left three live
+ * workers behind, Clear included.
+ */
+export interface PdfLoadingTask {
+  promise: Promise<unknown>;
+  destroy: () => Promise<void>;
+}
+
+export type PdfDocumentStatus = "idle" | "loading" | "ready" | "failed";
+
+interface UsePdfDocumentOptions {
+  /** Called with the page count once the document opens. */
+  onLoaded?: (pageCount: number) => void;
+  /**
+   * Called when the document cannot be opened. `encrypted` marks the one
+   * failure that is the calling tool's business rather than the preview's, so
+   * it can refuse the file instead of merely losing its thumbnails.
+   */
+  onFailed?: (message: string, encrypted: boolean) => void;
+}
+
+export interface UsePdfDocumentResult {
+  status: PdfDocumentStatus;
+  /** Pages in the open document, or 0 when there is none. */
+  pageCount: number;
+  /**
+   * The open document, by ref rather than state.
+   *
+   * Drawing a page is a side effect that reads the document at the moment it
+   * runs; putting the proxy in state would re-render every thumbnail each time
+   * a document opened, for no gain.
+   */
+  documentRef: React.RefObject<PdfDocumentProxy | null>;
+}
+
+export function usePdfDocument(
+  file: File | null,
+  { onLoaded, onFailed }: UsePdfDocumentOptions = {},
+): UsePdfDocumentResult {
+  const [status, setStatus] = useState<PdfDocumentStatus>("idle");
+  const [pageCount, setPageCount] = useState(0);
+  const documentRef = useRef<PdfDocumentProxy | null>(null);
+  const taskRef = useRef<PdfLoadingTask | null>(null);
+
+  /**
+   * The callbacks are held in refs so the loading effect depends only on the
+   * file. A parent that rebuilds them each render would otherwise re-open the
+   * document — and re-fetch pdf.js — on every keystroke in the range field.
+   */
+  const onLoadedRef = useRef(onLoaded);
+  const onFailedRef = useRef(onFailed);
+  useEffect(() => {
+    onLoadedRef.current = onLoaded;
+    onFailedRef.current = onFailed;
+  }, [onLoaded, onFailed]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // Tear down whatever the previous file left behind before anything else,
+    // so two documents are never live at once. The loading task is released
+    // as well as the document: a load that failed has the first and not the
+    // second, and leaving it holds its worker open.
+    const previousDocument = documentRef.current;
+    const previousTask = taskRef.current;
+    documentRef.current = null;
+    taskRef.current = null;
+    void previousDocument?.destroy().catch(() => {
+      // Destroying an already-dead document is not a failure worth reporting.
+    });
+    void previousTask?.destroy().catch(() => {});
+
+    if (!file) {
+      setStatus("idle");
+      setPageCount(0);
+      return;
+    }
+
+    setStatus("loading");
+
+    void (async () => {
+      // The task this attempt created, held locally. `taskRef` is shared, and
+      // by the time a late rejection lands it may already point at a newer
+      // file's task — destroying that would take down the replacement's
+      // preview, which is exactly what used to happen.
+      let ownTask: PdfLoadingTask | null = null;
+      try {
+        // Dynamic, so the renderer is fetched on first use rather than being
+        // part of the page's own bundle.
+        const pdfjs = await import("pdfjs-dist");
+        // Served from public/pdfjs/ rather than public/pdf/: pdf.js needs
+        // neither WebAssembly nor eval, so it has no business inheriting the
+        // relaxed policy that directory carries for qpdf. See next.config.ts
+        // and scripts/copy-pdfjs-worker.mjs.
+        pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
+
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        if (cancelled) return;
+
+        const task = pdfjs.getDocument({
+          data: bytes,
+          // The preview never needs to look anything up over the network, and
+          // connect-src 'self' would block it if it tried.
+          disableAutoFetch: true,
+          disableStream: true,
+        }) as unknown as PdfLoadingTask;
+        // Held from the moment it exists, so every exit below can release it —
+        // including the one where `await` throws and no document is ever made.
+        ownTask = task;
+        taskRef.current = task;
+
+        const opened = (await task.promise) as unknown as PdfDocumentProxy;
+
+        if (cancelled) {
+          void opened.destroy().catch(() => {});
+          if (taskRef.current === ownTask) taskRef.current = null;
+          return;
+        }
+
+        documentRef.current = opened;
+        setPageCount(opened.numPages);
+        setStatus("ready");
+        onLoadedRef.current?.(opened.numPages);
+      } catch (error) {
+        // Release this attempt's own worker, whether or not it still owns the
+        // state — and leave the shared ref alone unless it is still pointing
+        // here, so a newer file's task survives an older file's failure.
+        void ownTask?.destroy().catch(() => {});
+        if (taskRef.current === ownTask) taskRef.current = null;
+        if (cancelled) return;
+        setStatus("failed");
+        setPageCount(0);
+        const { message, encrypted } = classifyPreviewError(error);
+        onFailedRef.current?.(message, encrypted);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [file]);
+
+  // Drop the document when the caller goes away, so its worker and buffers do
+  // not outlive the page.
+  useEffect(() => {
+    return () => {
+      void documentRef.current?.destroy().catch(() => {});
+      documentRef.current = null;
+      void taskRef.current?.destroy().catch(() => {});
+      taskRef.current = null;
+    };
+  }, []);
+
+  return { status, pageCount, documentRef };
+}

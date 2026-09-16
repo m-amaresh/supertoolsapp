@@ -185,7 +185,7 @@ describe("pdf-split engine: the parser agrees with qpdf", () => {
 describe("pdf-split engine: selections the parser rejects", () => {
   // qpdf refuses these too. The parser stops them earlier and with a better
   // sentence, but it must not be *more* permissive than the engine.
-  const specs = ["0", "11", "x1-2", "1-2-3", "abc", "r11"];
+  const specs = ["0", "11", "x1-2", "1-2-3", "abc", "r11", "r0"];
 
   it.each(specs)("qpdf also rejects %s", async (spec) => {
     expect(parsePageRange(spec, TOTAL_PAGES).ok).toBe(false);

@@ -102,6 +102,18 @@ export default function PdfSplitTool() {
   const [isDragging, setIsDragging] = useState(false);
 
   const workerRef = useRef<Worker | null>(null);
+  /**
+   * The counting worker, kept apart from the splitting one.
+   *
+   * Separate attempt counters were not enough: `abandonAttempt` terminates
+   * whatever `workerRef` holds, and counting used that same ref. A mode change
+   * — which routes through `resetOutput` to abandon an in-flight *split* —
+   * therefore killed an in-flight *count* mid-flight. No message ever arrived,
+   * so `isCounting` stayed true and the tool sat on "Reading the PDF" forever
+   * with every field disabled. Ownership has to be separate, not just the
+   * bookkeeping.
+   */
+  const countWorkerRef = useRef<Worker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const specInputRef = useRef<HTMLInputElement>(null);
   /** Every object URL handed out, so none outlives the result it belongs to. */
@@ -138,6 +150,8 @@ export default function PdfSplitTool() {
       countAttemptRef.current += 1;
       workerRef.current?.terminate();
       workerRef.current = null;
+      countWorkerRef.current?.terminate();
+      countWorkerRef.current = null;
       for (const url of urlsRef.current) URL.revokeObjectURL(url);
       urlsRef.current = [];
     };
@@ -180,7 +194,15 @@ export default function PdfSplitTool() {
    * on selection means the answer is on screen before the reader types, rather
    * than arriving as an error afterwards.
    */
-  const countPages = useCallback(async (target: File) => {
+  /**
+   * Asks the engine how long the document is.
+   *
+   * `previewAfter` is for the suspicion path: when the byte heuristic flagged
+   * a file and qpdf then reports it clean, the thumbnails it had been denied
+   * are turned back on. The pdf.js-failure path passes false, because handing
+   * the renderer a document it has already failed on would only fail again.
+   */
+  const countPages = useCallback(async (target: File, previewAfter = false) => {
     const attempt = countAttemptRef.current;
     setIsCounting(true);
 
@@ -195,19 +217,20 @@ export default function PdfSplitTool() {
         return;
       }
 
-      workerRef.current?.terminate();
+      countWorkerRef.current?.terminate();
       const worker = new Worker(WORKER_URL);
-      workerRef.current = worker;
+      countWorkerRef.current = worker;
 
       worker.onmessage = (event: MessageEvent<PdfSplitWorkerResponse>) => {
         worker.terminate();
         if (attempt !== countAttemptRef.current) return;
-        workerRef.current = null;
+        countWorkerRef.current = null;
         setIsCounting(false);
 
         const response = event.data;
         if (response.stage === "count" && response.pageCount !== null) {
           setPageCount(response.pageCount);
+          if (previewAfter) setPreviewFile(target);
           return;
         }
 
@@ -228,7 +251,7 @@ export default function PdfSplitTool() {
       worker.onerror = () => {
         worker.terminate();
         if (attempt !== countAttemptRef.current) return;
-        workerRef.current = null;
+        countWorkerRef.current = null;
         setIsCounting(false);
         setError(
           "The PDF engine failed to load. Reload the page and try again.",
@@ -286,6 +309,8 @@ export default function PdfSplitTool() {
       resetOutput();
       countAttemptRef.current += 1;
       const token = countAttemptRef.current;
+      countWorkerRef.current?.terminate();
+      countWorkerRef.current = null;
       setIsCounting(false);
       setPageCount(null);
       setPreviewFile(null);
@@ -302,28 +327,33 @@ export default function PdfSplitTool() {
         return;
       }
 
-      // Asked and answered *before* the renderer is handed anything, so a
-      // protected document costs neither a 1.6 MB download nor a page count
-      // that would quietly undo its own refusal.
-      const protectedDocument = await readsAsProtected(next);
+      // Asked *before* the renderer is handed anything, so a protected
+      // document costs neither a 1.6 MB download nor a page count that would
+      // quietly undo its own refusal.
+      const suspect = await readsAsProtected(next);
       // A newer selection while those two reads were pending owns the state.
       if (token !== countAttemptRef.current) return;
 
       setFile(next);
-      if (protectedDocument) {
-        setError(
-          "This PDF is password-protected. Splitting it would drop that protection from every piece, so remove the password first with the PDF Password Remover.",
-        );
+      setIsCounting(true);
+
+      if (suspect) {
+        // A regex over raw bytes is a suspicion, not a verdict. An ordinary
+        // document can contain the text "/Encrypt 12 0 R" — in a content
+        // stream, an outline title, an embedded file — and refusing it on that
+        // alone would block a file qpdf opens perfectly well. So the engine is
+        // asked, and it decides: its inspect pass refuses a genuinely
+        // protected document, and clears an innocent one for preview.
+        void countPages(next, true);
         return;
       }
 
-      // The page count now arrives from the preview, which has to open the
-      // document anyway. `countPages` stays as the fallback for when the
+      // The page count otherwise arrives from the preview, which has to open
+      // the document anyway. `countPages` stays as the fallback for when the
       // renderer cannot — see `handlePreviewFailed`.
-      setIsCounting(true);
       setPreviewFile(next);
     },
-    [readsAsProtected, resetOutput],
+    [countPages, readsAsProtected, resetOutput],
   );
 
   const handlePreviewLoaded = useCallback((count: number) => {

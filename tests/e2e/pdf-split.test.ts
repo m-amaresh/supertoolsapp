@@ -405,6 +405,138 @@ describe("pdf split", () => {
     }
   });
 
+  it("accepts an unencrypted document whose text merely looks encrypted", async () => {
+    // Regression: the byte heuristic was treated as a verdict, so an ordinary
+    // document containing the text "/Encrypt 12 0 R" — here as page content —
+    // was refused as password-protected although qpdf opens it happily. The
+    // heuristic now only triggers a check; the engine decides.
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+    await resetBlobs(page);
+    await addFile(page, "looks-encrypted.pdf", makePdf("/Encrypt 12 0 R", 2));
+
+    await expect
+      .poll(() => rangeField(page).isDisabled(), { timeout: SPLIT_TIMEOUT })
+      .toBe(false);
+    expect(await errorAlert(page).count()).toBe(0);
+
+    // Cleared by the engine, so the thumbnails it was denied come back too.
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(2);
+
+    // And it really does split.
+    await rangeField(page).fill("2");
+    await splitButton(page).click();
+    await downloadLinks(page)
+      .first()
+      .waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+  });
+
+  it("still counts pages when the mode is switched mid-count", async () => {
+    // Regression: counting and splitting shared one worker ref, so a mode
+    // change — which abandons an in-flight *split* — terminated an in-flight
+    // *count*. No message ever arrived, leaving "Reading the PDF" up forever
+    // with every field disabled. Reached here by blocking the renderer, which
+    // is what puts qpdf on counting duty.
+    await page.route("**/pdfjs/**", (route) => route.abort());
+    try {
+      await page.goto(`${server.baseUrl}${ROUTE}`, {
+        waitUntil: "networkidle",
+      });
+      await resetBlobs(page);
+      await addFile(page, "report.pdf", makePdf("P", 6));
+
+      // Switch while the count is still in flight.
+      await page.getByRole("radio", { name: "Split into files" }).click();
+
+      await expect
+        .poll(() => sizeField(page).isDisabled(), { timeout: SPLIT_TIMEOUT })
+        .toBe(false);
+      await expect
+        .poll(() => page.getByText(/Produces \d+ files/).count())
+        .toBeGreaterThan(0);
+    } finally {
+      await page.unroute("**/pdfjs/**");
+    }
+  });
+
+  it("does not leave a renderer worker behind when a preview fails", async () => {
+    // Regression: only successfully loaded documents were released, so a load
+    // that threw left its loading task — and the worker that task owns —
+    // alive. Measured on the unfixed build, three bad files left 1, 2 then 3
+    // live renderers, still 3 after Clear. Fixed, it holds at 1 and drops to 0.
+    const liveRenderers = () =>
+      page.workers().filter((worker) => worker.url().includes("pdf.worker"))
+        .length;
+
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+    expect(liveRenderers()).toBe(0);
+
+    // No Clear between attempts: clearing tears the previous task down as a
+    // side effect, which would mask the accumulation this is looking for.
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const broken = Buffer.concat([
+        Buffer.from("%PDF-1.4\n", "latin1"),
+        Buffer.from("not actually a pdf body".repeat(20), "latin1"),
+      ]);
+      await addFile(page, `broken-${attempt}.pdf`, broken);
+      await expect
+        .poll(() => errorAlert(page).count(), { timeout: SPLIT_TIMEOUT })
+        .toBeGreaterThan(0);
+      await expect
+        .poll(liveRenderers, { timeout: SPLIT_TIMEOUT })
+        .toBeLessThanOrEqual(1);
+    }
+
+    await page.getByRole("button", { name: "Clear" }).click();
+    await expect.poll(liveRenderers, { timeout: SPLIT_TIMEOUT }).toBe(0);
+  });
+
+  it("keeps the replacement's preview when an older load fails late", async () => {
+    // Regression: the failure handler destroyed whatever `taskRef` held rather
+    // than the task its own attempt created. A stale rejection landing after a
+    // newer file had registered its task therefore tore down the *newer*
+    // preview, and the valid replacement silently lost its thumbnails.
+    //
+    // Delaying the renderer is what makes the ordering deterministic: the
+    // abandoned load cannot reject until its worker arrives, by which time the
+    // replacement has already claimed the shared ref.
+    await page.route("**/pdf.worker.min.mjs", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    try {
+      await page.goto(`${server.baseUrl}${ROUTE}`, {
+        waitUntil: "networkidle",
+      });
+      await resetBlobs(page);
+
+      // Starts a load that will fail — but only once its worker turns up.
+      const broken = Buffer.concat([
+        Buffer.from("%PDF-1.4\n", "latin1"),
+        Buffer.from("not actually a pdf body".repeat(20), "latin1"),
+      ]);
+      await addFile(page, "broken.pdf", broken);
+
+      // Replace it before that can happen.
+      await page.waitForTimeout(200);
+      await addFile(page, "report.pdf", makePdf("P", 4));
+
+      // The replacement is valid, so it must end up with a preview and a
+      // usable tool — regardless of how the abandoned load ends.
+      await expect
+        .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+        .toBe(4);
+      await expect
+        .poll(() => rangeField(page).isDisabled(), { timeout: SPLIT_TIMEOUT })
+        .toBe(false);
+      expect(await errorAlert(page).count()).toBe(0);
+    } finally {
+      await page.unroute("**/pdf.worker.min.mjs");
+    }
+  });
+
   it("refuses a password-protected PDF instead of silently unprotecting it", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await resetBlobs(page);

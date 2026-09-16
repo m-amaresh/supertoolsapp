@@ -108,6 +108,40 @@ describe("pdf-encrypt: qpdf argument construction", () => {
     expect(args).toContain(`--user-password=${nasty}`);
   });
 
+  it("denies commenting even when editing is allowed", () => {
+    // Regression: --modify=all grants annotation on the way past, so emitting
+    // the level alone produced a file that allowed commenting while the UI
+    // listed it as restricted.
+    const args = buildEncryptArgs(
+      options({ permissions: { ...DEFAULT_PERMISSIONS, annotate: false } }),
+      "i",
+      "o",
+    );
+    expect(args).toContain("--modify=all");
+    expect(args).toContain("--annotate=n");
+    // The permission is described to the reader as covering form filling too,
+    // and qpdf tracks that as a separate bit.
+    expect(args).toContain("--form=n");
+  });
+
+  it("does not bother denying commenting when it is allowed", () => {
+    const args = buildEncryptArgs(options(), "i", "o");
+    expect(args.some((arg) => arg.startsWith("--annotate"))).toBe(false);
+  });
+
+  it("leaves the annotate-only level to speak for itself", () => {
+    // --modify=annotate already means "comment yes, edit no"; adding
+    // --annotate=n on top would contradict it.
+    const args = buildEncryptArgs(
+      options({ permissions: { ...DEFAULT_PERMISSIONS, modify: false } }),
+      "i",
+      "o",
+    );
+    expect(args).toContain("--modify=annotate");
+    expect(args).not.toContain("--annotate=n");
+    expect(args).not.toContain("--form=n");
+  });
+
   it("emits no duplicate flags", () => {
     const args = buildEncryptArgs(options({ strength: "aes128" }), "i", "o");
     const flags = args
@@ -150,7 +184,9 @@ describe("pdf-encrypt: modify level collapsing", () => {
     ).toBe("none");
   });
 
-  it("ignores annotate when editing is allowed, since all subsumes it", () => {
+  it("still reports all when editing is allowed but commenting is not", () => {
+    // The level cannot express that combination on its own; buildEncryptArgs
+    // adds --annotate=n after it. See the argument tests below.
     expect(modifyOption({ ...DEFAULT_PERMISSIONS, annotate: false })).toBe(
       "all",
     );

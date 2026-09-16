@@ -112,6 +112,19 @@ describe("pdf-split: page range parsing", () => {
     }
   });
 
+  it("rejects r0, which names the page after the last one", () => {
+    // Regression: only the lower bound was checked, so r0 on a two-page
+    // document resolved to page 3 and enabled a run qpdf then refused with
+    // "number 3 out of range".
+    const result = parsePageRange("r0", 2);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.message).toContain("starts at r1");
+  });
+
+  it("accepts r1 as the last page on the same document", () => {
+    expect(pagesOf("r1", 2)).toEqual([2]);
+  });
+
   it("rejects an rN that counts back past the start", () => {
     const result = parsePageRange("r11", 10);
     expect(result.ok).toBe(false);

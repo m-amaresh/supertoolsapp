@@ -172,12 +172,13 @@ export function effectiveOwnerPassword(options: PdfEncryptOptions): string {
 }
 
 /**
- * Collapse the modify-family permissions onto qpdf's single `--modify` level.
+ * The `--modify` level for a permission set.
  *
- * qpdf exposes both a level (`--modify=all|annotate|none`) and individual
- * switches (`--annotate`, `--form`, `--assemble`), and mixing them produces
- * combinations where one silently implies another. Using only the level means
- * the flags this tool emits can never contradict each other.
+ * The level alone cannot say "may edit the content but may not comment": it
+ * runs all -> annotate -> none, and `all` grants annotation on the way past.
+ * `buildEncryptArgs` therefore follows the level with an explicit
+ * `--annotate=n` for that one combination — verified against qpdf 12.2.0,
+ * which reports "modify annotations: not allowed, modify other: allowed".
  */
 export function modifyOption(
   permissions: PdfEncryptPermissions,
@@ -220,6 +221,21 @@ export function buildEncryptArgs(
     `--print=${permissions.print ? "full" : "none"}`,
     `--modify=${modifyOption(permissions)}`,
     `--extract=${permissions.copy ? "y" : "n"}`,
+  );
+
+  // The one combination the level cannot express. Without these the UI would
+  // list commenting as restricted while the file happily allowed it.
+  //
+  // Both flags, because the permission covers both: `annotate` is described to
+  // the reader as "add comments and fill in form fields", and qpdf tracks those
+  // as separate bits — `--annotate=n` alone still leaves "modify forms:
+  // allowed". Verified against qpdf 12.2.0, which reports annotations and
+  // forms denied while "modify other" stays allowed, so editing is unaffected.
+  if (permissions.modify && !permissions.annotate) {
+    args.push("--annotate=n", "--form=n");
+  }
+
+  args.push(
     // `--` closes the --encrypt option group; the paths follow it.
     "--",
     inputPath,

@@ -202,6 +202,25 @@ describe("pdf-encrypt engine: permissions", () => {
     expect(text).toMatch(/modify annotations:\s*not allowed/i);
   });
 
+  it("denies commenting even when editing is allowed", async () => {
+    // Regression, and the reason buildEncryptArgs emits --annotate=n: the
+    // --modify level runs all -> annotate -> none, so `all` grants annotation
+    // on the way past. Emitting the level alone produced a document that
+    // allowed commenting while the UI listed it as restricted.
+    const bytes = await encrypt(
+      options({ permissions: { ...DEFAULT_PERMISSIONS, annotate: false } }),
+    );
+    const { text } = await showEncryption(bytes, "hunter2");
+
+    expect(text).toMatch(/modify annotations:\s*not allowed/i);
+    // And form filling, which the UI names in the same breath as commenting.
+    // --annotate=n alone left this reading "allowed".
+    expect(text).toMatch(/modify forms:\s*not allowed/i);
+    // Editing itself is still permitted, which is what makes this distinct
+    // from --modify=none.
+    expect(text).toMatch(/modify other:\s*allowed/i);
+  });
+
   it("keeps commenting available when only editing is denied", async () => {
     // `modifyOption` collapses this onto `--modify=annotate`; the point is that
     // qpdf accepts the level and that the two permissions really do diverge.

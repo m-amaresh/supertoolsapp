@@ -277,7 +277,17 @@ function resolvePage(
         `"${token}" is not a page. Use r1 for the last page, r2 for the one before it.`,
       );
     }
-    const page = totalPages - Number(fromEnd) + 1;
+    const offset = Number(fromEnd);
+    // r0 would name the page *after* the last one, which qpdf rejects with
+    // "number N out of range" — so accepting it here enabled an action that
+    // could only fail. Counting from the end starts at r1, and with the
+    // offset at least 1 the resulting page can never exceed totalPages.
+    if (offset < 1) {
+      return bad(
+        `"${token}" is not a page. Counting back from the end starts at r1, which is the last page.`,
+      );
+    }
+    const page = totalPages - offset + 1;
     if (page < 1) {
       return bad(
         `"${token}" counts back past the start — this document has only ${totalPages} ${totalPages === 1 ? "page" : "pages"}.`,
