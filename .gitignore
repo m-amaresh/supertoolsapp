@@ -23,6 +23,8 @@
 # (public/pdf/qpdf-worker.js is hand-written and IS tracked)
 /public/pdf/qpdf.js
 /public/pdf/qpdf.wasm
+# (copied from pdfjs-dist by scripts/copy-pdfjs-worker.mjs)
+/public/pdfjs/
 
 # debug
 npm-debug.log*

@@ -45,7 +45,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Biome check
-        run: pnpm -s exec biome check src/app src/components src/hooks src/lib tests next.config.ts vitest.config.e2e.mts scripts public/pdf/qpdf-worker.js public/pdf/qpdf-merge-worker.js public/pdf/qpdf-encrypt-worker.js
+        run: pnpm -s exec biome check src/app src/components src/hooks src/lib tests next.config.ts vitest.config.e2e.mts scripts public/pdf/qpdf-worker.js public/pdf/qpdf-merge-worker.js public/pdf/qpdf-encrypt-worker.js public/pdf/qpdf-split-worker.js
 
       - name: Unit tests
         run: pnpm -s test:run

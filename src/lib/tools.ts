@@ -33,7 +33,8 @@ export type ToolIconKey =
   | "networkWired"
   | "qrcode"
   | "filePdf"
-  | "layerGroup";
+  | "layerGroup"
+  | "scissors";
 
 export interface ToolDefinition {
   name: string;
@@ -311,6 +312,18 @@ export const toolDefinitions: ToolDefinition[] = [
     sidebarLabel: "Merger",
     sidebarOrder: 3,
     icon: "layerGroup",
+  },
+  {
+    name: "PDF Splitter",
+    description: "Extract pages or cut a PDF into smaller files",
+    href: "/tools/pdf/split",
+    available: true,
+    featured: true,
+    homeOrder: 32,
+    sidebarCategory: "PDF",
+    sidebarLabel: "Splitter",
+    sidebarOrder: 4,
+    icon: "scissors",
   },
 
   // ── Data ──

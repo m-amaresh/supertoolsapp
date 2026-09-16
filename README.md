@@ -16,7 +16,7 @@ A fast, privacy-first suite of developer utilities that run entirely in your bro
 
 ## What You Get
 
-- **31 browser-based tools** across encoding, data conversion, cryptography, PDF, text processing, ID generation, network, and time utilities
+- **32 browser-based tools** across encoding, data conversion, cryptography, PDF, text processing, ID generation, network, and time utilities
 - **Client-side processing** — payloads (text, files, tokens, secrets) are transformed locally, never sent to a server
 - **Consistent UX** — every tool follows the same scaffold, toolbar, status, and output patterns
 - **Modern stack** — Next.js 16, React 19, TypeScript 6, Tailwind CSS 4, Biome, Vitest
@@ -26,7 +26,7 @@ A fast, privacy-first suite of developer utilities that run entirely in your bro
 | Category | Tools |
 |---|---|
 | **Encoding & Crypto** | Base64, Base32, Base58, Hex, URL Encode/Decode, URL Parser, Escape/Unescape, AES, RSA, Hash/HMAC, CRC32, JWT Decoder, TLS Certificate Inspector |
-| **PDF** | PDF Password Remover, PDF Password Protector, PDF Merger |
+| **PDF** | PDF Password Remover, PDF Password Protector, PDF Merger, PDF Splitter |
 | **Data** | JSON Formatter, YAML Converter, CSV Converter, Base Converter, Color Converter |
 | **Text** | Diff Viewer, Regex Tester, Case Converter, Lorem Ipsum Generator |
 | **IDs & Passwords** | UUID Generator, Password Generator, QR Code Generator |

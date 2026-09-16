@@ -24,6 +24,7 @@ import { faPalette } from "@fortawesome/free-solid-svg-icons/faPalette";
 import { faPen } from "@fortawesome/free-solid-svg-icons/faPen";
 import { faQrcode } from "@fortawesome/free-solid-svg-icons/faQrcode";
 import { faRightLeft } from "@fortawesome/free-solid-svg-icons/faRightLeft";
+import { faScissors } from "@fortawesome/free-solid-svg-icons/faScissors";
 import { faShield } from "@fortawesome/free-solid-svg-icons/faShield";
 import { faTicket } from "@fortawesome/free-solid-svg-icons/faTicket";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -62,6 +63,7 @@ const iconByKey: Record<ToolIconKey, IconDefinition> = {
   qrcode: faQrcode,
   filePdf: faFilePdf,
   layerGroup: faLayerGroup,
+  scissors: faScissors,
 };
 
 interface SidebarProps {

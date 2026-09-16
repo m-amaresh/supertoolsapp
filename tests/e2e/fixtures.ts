@@ -131,4 +131,9 @@ export const TOOL_FIXTURES: ToolFixture[] = [
     cannotDrive:
       "needs several real PDFs set on a file input, which this fixture cannot do; driven to a real result in pdf-merge.test.ts instead",
   },
+  {
+    route: "/tools/pdf/split",
+    cannotDrive:
+      "needs a real PDF set on a file input and a Web Worker; driven to a real result, and to a real ZIP, in pdf-split.test.ts instead",
+  },
 ];

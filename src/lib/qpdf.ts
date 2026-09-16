@@ -55,6 +55,36 @@ export function stripProgramPrefix(line: string): string {
   return line.replace(/^[^\s:]*:\s*/, "").trim();
 }
 
+/**
+ * Matches an `/Encrypt` entry pointing at the encryption dictionary.
+ *
+ * The indirect reference is the whole point of the pattern. A bare `/Encrypt`
+ * appears in plenty of innocent places — an uncompressed content stream, a
+ * bookmark title, an embedded file name — but `/Encrypt 12 0 R` is the trailer
+ * form and is not something a document says by accident.
+ */
+const TRAILER_ENCRYPT = /\/Encrypt\s+\d+\s+\d+\s+R/;
+
+/**
+ * True when a chunk of a PDF declares encryption.
+ *
+ * Deliberately works on a *chunk* rather than a whole document, so a caller
+ * can slice the head and tail of a large file and answer the question without
+ * reading it all — the trailer lives at the end, and a linearized file repeats
+ * one at the front.
+ *
+ * This is a fast path, not the authority. qpdf decides for real when the file
+ * reaches the engine; this exists so a protected document can be refused the
+ * instant it is chosen, instead of after a renderer has been downloaded and a
+ * page range typed.
+ */
+export function declaresEncryption(bytes: Uint8Array): boolean {
+  // latin1 is byte-preserving, and TextDecoder handles a chunk of any size —
+  // String.fromCharCode(...bytes) would risk blowing the argument limit.
+  const text = new TextDecoder("latin1").decode(bytes);
+  return TRAILER_ENCRYPT.test(text);
+}
+
 /** True when the buffer starts with a PDF header, allowing leading junk bytes. */
 export function looksLikePdf(bytes: Uint8Array): boolean {
   // The spec requires %PDF- at byte 0, but real files often carry a preamble,

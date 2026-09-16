@@ -39,6 +39,7 @@ The rough product goals are:
 
 - `/tools/pdf/encrypt`
 - `/tools/pdf/merge`
+- `/tools/pdf/split`
 - `/tools/pdf/unlock`
 
 ### Data

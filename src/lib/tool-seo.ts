@@ -207,6 +207,14 @@ export const TOOL_INTENT_KEYWORDS: Record<string, string[]> = {
     "merge pdf offline",
     "pdf merger no upload",
   ],
+  "/tools/pdf/split": [
+    "split pdf",
+    "extract pdf pages",
+    "pdf splitter",
+    "separate pdf pages",
+    "split pdf by range",
+    "split pdf no upload",
+  ],
 };
 
 export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
@@ -1440,6 +1448,71 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
         question: "Is there a file size limit?",
         answer:
           "Files up to 100 MB are accepted. The limit exists because the PDF is held in browser memory during encryption, and larger files would risk exhausting the tab.",
+      },
+    ],
+  },
+  "/tools/pdf/split": {
+    title: "PDF Splitter FAQ",
+    about:
+      "Split a PDF entirely inside your browser. Pull a selection of pages into a single new document, or cut the whole file into fixed-size pieces and download them individually or as one archive. Splitting runs through a WebAssembly build of qpdf, the long-standing open-source PDF toolkit, executing in a Web Worker on your own device. Most online PDF splitters upload your file to a server, which means handing contracts, statements, medical records and other confidential documents to a third party purely to cut them up. This tool never transmits them. Page selections accept ranges, lists, exclusions and positions counted from the end, and the number of pages a selection produces is shown before anything runs.",
+    howToUse: [
+      "Drop your PDF onto the upload area, or choose a file from your device.",
+      "Wait a moment while the page count is read — it is needed to check your selection.",
+      "Pick Extract pages to take a selection into one PDF, or Split into files to cut the document up.",
+      "Type a range such as 1-5, 8, 11-13, or the number of pages you want in each file.",
+      "Check the line describing what will be produced, then select Split PDF.",
+      "Download each piece, or take them all as a single ZIP archive.",
+    ],
+    items: [
+      {
+        question: "Is my PDF uploaded to a server?",
+        answer:
+          "No. The file is read directly in your browser and split by a WebAssembly module running in a Web Worker on your device. Nothing is transmitted anywhere, and the worker is terminated as soon as the result is ready.",
+      },
+      {
+        question: "What page ranges can I use?",
+        answer:
+          "A single page (5), a range (2-6), or a comma-separated list (1,3,5). Use z for the last page and rN to count back from it, so 4-z means page four to the end and r2 is the second from last. Prefix a range with x to exclude it, as in 1-z,x3 for every page except the third. An exclusion cannot come first, because it would have nothing to subtract from.",
+      },
+      {
+        question: "Can I reorder pages while extracting?",
+        answer:
+          "Yes. The order you give is the order you get, so 3-1 reverses those three pages and 5,1,3 produces exactly that sequence. A page asked for twice appears twice.",
+      },
+      {
+        question: "How do I delete pages from a PDF?",
+        answer:
+          "Extract everything except the pages you want gone. To drop pages 4 and 7 from a document, use 1-z,x4,x7 — the result is the same file without them. The original is never modified.",
+      },
+      {
+        question: "Can I split a password-protected PDF?",
+        answer:
+          "Not directly, and deliberately so. qpdf cannot read an encrypted file without the password, and a document that opens with an empty user password would otherwise split silently into pieces with its restrictions quietly removed. Remove the password first with the PDF Password Remover, which makes that an explicit choice.",
+      },
+      {
+        question: "How many files can one split produce?",
+        answer:
+          "Up to 200. The limit is about the browser rather than the engine: every piece is held in memory with its own download link, and a list of several hundred is neither usable nor kind to the tab. If you hit it, use more pages per file.",
+      },
+      {
+        question: "Do bookmarks and metadata survive the split?",
+        answer:
+          "Page content does; bookmarks and document-level metadata generally do not. They describe the document as a whole, and there is no correct way to divide them among its pieces. Links that point inside the document may also break when their target lands in a different file.",
+      },
+      {
+        question: "Does splitting change the pages themselves?",
+        answer:
+          "Text, images and page structure are preserved. qpdf writes each piece as a new document, so the internal file structure and size may change: streams are recompressed and objects are renumbered. Keep your original until you have checked the pieces.",
+      },
+      {
+        question: "Does this work offline?",
+        answer:
+          "Yes. Once the page and its WebAssembly module have loaded, splitting requires no network connection at all.",
+      },
+      {
+        question: "Is there a file size limit?",
+        answer:
+          "Files up to 100 MB are accepted. The limit exists because the PDF is held in browser memory while it is split, and larger files would risk exhausting the tab.",
       },
     ],
   },
