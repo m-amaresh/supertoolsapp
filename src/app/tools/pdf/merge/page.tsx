@@ -9,8 +9,9 @@ import { faUpload } from "@fortawesome/free-solid-svg-icons/faUpload";
 import { faXmark } from "@fortawesome/free-solid-svg-icons/faXmark";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertBox } from "@/components/AlertBox";
+import { PdfCoverThumbnail } from "@/components/tool/PdfCoverThumbnail";
 import { RunShortcutHint } from "@/components/tool/RunShortcutHint";
 import {
   ToolBody,
@@ -40,6 +41,7 @@ import {
   moveItem,
   type PdfMergeErrorCode,
   type PdfMergeWorkerResponse,
+  previewableFiles,
   validateBytes,
   validateSelection,
 } from "@/lib/pdf-merge";
@@ -71,6 +73,16 @@ interface MergedResult {
 
 export default function PdfMergeTool() {
   const [files, setFiles] = useState<QueuedFile[]>([]);
+  /**
+   * Pages per queued file, reported by its cover thumbnail.
+   *
+   * Keyed by the queue id rather than the filename, for the same reason the
+   * rows are: the same document can be added twice, and rows move. A file
+   * whose cover will not render is simply absent, and its row shows the size
+   * alone — pdf.js failing to read something qpdf can merge is not worth
+   * turning into an error.
+   */
+  const [pageCounts, setPageCounts] = useState<Record<string, number>>({});
   const [isWorking, setIsWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<PdfMergeErrorCode | null>(null);
@@ -150,6 +162,18 @@ export default function PdfMergeTool() {
       setFiles(update);
     },
     [clearResult],
+  );
+
+  /**
+   * Which rows may open their document for a cover.
+   *
+   * Opening one reads the whole file into memory, so the merger's own size
+   * ceilings gate it: without this an oversized document was loaded the
+   * instant it joined the list, and only refused later when Merge was pressed.
+   */
+  const previewable = useMemo(
+    () => previewableFiles(files.map((queued) => queued.file.size)),
+    [files],
   );
 
   const addFiles = useCallback(
@@ -587,12 +611,32 @@ export default function PdfMergeTool() {
                         >
                           {index + 1}
                         </span>
+                        <PdfCoverThumbnail
+                          file={previewable[index] ? queued.file : null}
+                          onPageCount={(count) =>
+                            setPageCounts((previous) => {
+                              if (count === null) {
+                                if (!(queued.id in previous)) return previous;
+                                const { [queued.id]: _dropped, ...rest } =
+                                  previous;
+                                return rest;
+                              }
+                              if (previous[queued.id] === count)
+                                return previous;
+                              return { ...previous, [queued.id]: count };
+                            })
+                          }
+                        />
                         <div className="min-w-0 flex-1">
                           <span className="block truncate font-mono text-[13px] text-foreground">
                             {queued.file.name}
                           </span>
                           <ToolMeta className="text-[12px]">
                             {formatBytes(queued.file.size)}
+                            {pageCounts[queued.id] !== undefined &&
+                              ` · ${pageCounts[queued.id]} ${
+                                pageCounts[queued.id] === 1 ? "page" : "pages"
+                              }`}
                           </ToolMeta>
                         </div>
                         <div className="flex shrink-0 items-center gap-0.5">

@@ -26,6 +26,15 @@ export const MAX_PREVIEW_PAGES = 200;
 /** Width each thumbnail is rendered at, in CSS pixels. */
 export const THUMBNAIL_WIDTH = 120;
 
+/**
+ * Width of a cover thumbnail in a file list, in CSS pixels.
+ *
+ * Smaller than a contact-sheet page: it sits in a row beside a filename and
+ * reorder buttons, where it has to be recognisable at a glance rather than
+ * readable.
+ */
+export const COVER_WIDTH = 40;
+
 /** Pages that get a thumbnail, in order. */
 export function previewPageNumbers(
   pageCount: number,

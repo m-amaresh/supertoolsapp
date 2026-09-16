@@ -224,6 +224,147 @@ describe("pdf merge", () => {
     ).toEqual(["B1", "B2", "B3", "A1", "A2"]);
   }, 120_000);
 
+  it("shows a cover thumbnail and page count for each queued file", async () => {
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+
+    await addFiles(page, [
+      { name: "contract.pdf", buffer: makePdf("A", 4) },
+      { name: "appendix.pdf", buffer: makePdf("B", 2) },
+    ]);
+
+    // One cover per file, each drawn on a real canvas. Distinct pixel values
+    // rather than canvas dimensions: the component sizes the frame itself
+    // before rendering, so a size check would pass over a blank placeholder.
+    const covers = page.locator("li canvas");
+    await expect.poll(() => covers.count(), { timeout: MERGE_TIMEOUT }).toBe(2);
+    await expect
+      .poll(
+        () =>
+          covers.first().evaluate((element) => {
+            const canvas = element as HTMLCanvasElement;
+            const context = canvas.getContext("2d");
+            if (!context || canvas.width === 0) return 0;
+            const { data } = context.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height,
+            );
+            const seen = new Set<number>();
+            for (let i = 0; i < data.length; i += 4) {
+              seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+            }
+            return seen.size;
+          }),
+        { timeout: MERGE_TIMEOUT },
+      )
+      .toBeGreaterThan(1);
+
+    // The count belongs to the file, so it has to follow the row when the
+    // order changes rather than staying put at a position.
+    await expect
+      .poll(() => page.getByText(/4 pages/).count())
+      .toBeGreaterThan(0);
+    await expect
+      .poll(() => page.getByText(/2 pages/).count())
+      .toBeGreaterThan(0);
+
+    const rowText = async () =>
+      page.locator("li").filter({ hasText: ".pdf" }).allInnerTexts();
+    const before = await rowText();
+    expect(before[0]).toContain("contract.pdf");
+    expect(before[0]).toContain("4 pages");
+
+    await page.getByRole("button", { name: "Move appendix.pdf up" }).click();
+    const after = await rowText();
+    expect(after[0]).toContain("appendix.pdf");
+    expect(after[0]).toContain("2 pages");
+  });
+
+  it("never opens a file too large to merge", async () => {
+    // Regression: a cover was mounted for every queued file, and opening one
+    // reads the whole document into memory. The size ceilings were checked
+    // only when Merge was pressed, so an oversized file was loaded — and could
+    // freeze the tab — long before anything refused it.
+    //
+    // What this watches is the read itself, because nothing else distinguishes
+    // the two builds: 101 MB of padding fails to parse either way, so the
+    // unfixed page also ends with no canvas and no surviving worker. Only the
+    // arrayBuffer() call says whether the file was pulled into memory at all.
+    await page.addInitScript(() => {
+      const sizes: number[] = [];
+      (window as unknown as { __reads: number[] }).__reads = sizes;
+      const original = Blob.prototype.arrayBuffer;
+      Blob.prototype.arrayBuffer = function patched(this: Blob) {
+        sizes.push(this.size);
+        return original.call(this);
+      };
+    });
+
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+
+    // Comfortably past MAX_PDF_BYTES, with a real header so nothing else
+    // rejects it first. Written to disk rather than passed as a buffer:
+    // Playwright refuses in-memory payloads over 50 MB, well under the limit
+    // being tested.
+    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const directory = await mkdtemp(join(tmpdir(), "supertools-merge-"));
+    const hugePath = join(directory, "huge.pdf");
+    const hugeSize = 101 * 1024 * 1024;
+    await writeFile(
+      hugePath,
+      Buffer.concat([
+        Buffer.from("%PDF-1.4\n", "latin1"),
+        Buffer.alloc(hugeSize, 0x20),
+      ]),
+    );
+
+    const reads = () =>
+      page.evaluate(
+        () => (window as unknown as { __reads: number[] }).__reads ?? [],
+      );
+
+    try {
+      // Two calls because the queue accumulates, and Playwright will not mix
+      // a path with an in-memory payload in one call.
+      await page.locator('input[type="file"]').setInputFiles([hugePath]);
+      await expect
+        .poll(() => page.getByText("huge.pdf").count())
+        .toBeGreaterThan(0);
+
+      // The small file that follows *is* read, which is what proves the
+      // harness is watching the right thing rather than watching nothing.
+      const small = makePdf("B", 2);
+      await addFiles(page, [{ name: "small.pdf", buffer: small }]);
+      await expect
+        .poll(() => page.locator("li canvas").count(), {
+          timeout: MERGE_TIMEOUT,
+        })
+        .toBe(1);
+      await expect
+        .poll(async () => (await reads()).includes(small.length))
+        .toBe(true);
+
+      // Nothing the size of the oversized file was ever pulled into memory.
+      const sizes = await reads();
+      expect(
+        sizes.filter((size) => size >= hugeSize),
+        `oversized file was read: ${JSON.stringify(sizes)}`,
+      ).toEqual([]);
+
+      // And it reports no page count, having never been opened.
+      const rows = await page
+        .locator("li")
+        .filter({ hasText: "huge.pdf" })
+        .allInnerTexts();
+      expect(rows.join(" ")).not.toMatch(/\d+ pages/);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it("names the file at fault when one cannot be read", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await addFiles(page, [

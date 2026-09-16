@@ -46,6 +46,31 @@ export const MAX_MERGE_FILES = 50;
  */
 export const MAX_TOTAL_MERGE_BYTES = 200 * 1024 * 1024;
 
+/**
+ * Which queued files may be opened for a cover preview.
+ *
+ * Previewing reads the whole document into memory, and the merger's size
+ * limits were only checked when Merge was pressed — so a 500 MB file was
+ * loaded the moment it joined the list, long before anything refused it. The
+ * same ceilings therefore gate the previews: anything over `MAX_PDF_BYTES` is
+ * never opened, and the rest are taken in order only while their running total
+ * stays within `MAX_TOTAL_MERGE_BYTES`.
+ *
+ * A file that would breach the running total is skipped rather than ending the
+ * scan, so a small document after a large one still gets its cover. Skipping a
+ * preview costs nothing but a thumbnail: `validateSelection` still decides
+ * whether the merge itself may proceed, and says why.
+ */
+export function previewableFiles(sizes: number[]): boolean[] {
+  let running = 0;
+  return sizes.map((size) => {
+    if (size <= 0 || size > MAX_PDF_BYTES) return false;
+    if (running + size > MAX_TOTAL_MERGE_BYTES) return false;
+    running += size;
+    return true;
+  });
+}
+
 export type PdfMergeErrorCode =
   | "too-few-files"
   | "too-many-files"

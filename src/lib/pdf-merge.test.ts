@@ -15,6 +15,7 @@ import {
   mergedFileName,
   moveItem,
   type PdfMergeWorkerResponse,
+  previewableFiles,
   resolveScratchNames,
   scratchName,
   validateBytes,
@@ -440,5 +441,54 @@ describe("pdf-merge: presentation helpers", () => {
 
   it("omits the page count when qpdf would not report it", () => {
     expect(describeMerge(2, null, 512)).toBe("2 files · 512 B");
+  });
+});
+
+describe("pdf-merge: which files may be previewed", () => {
+  it("allows ordinary files", () => {
+    expect(previewableFiles([1024, 2048])).toEqual([true, true]);
+  });
+
+  it("refuses a file over the per-file limit, without loading it", () => {
+    expect(previewableFiles([MAX_PDF_BYTES + 1])).toEqual([false]);
+  });
+
+  it("allows a file exactly at the per-file limit", () => {
+    expect(previewableFiles([MAX_PDF_BYTES])).toEqual([true]);
+  });
+
+  it("refuses an empty file", () => {
+    expect(previewableFiles([0])).toEqual([false]);
+  });
+
+  it("stops once the running total would breach the merge ceiling", () => {
+    const half = MAX_TOTAL_MERGE_BYTES / 2;
+    expect(previewableFiles([half, half, 1024])).toEqual([true, true, false]);
+  });
+
+  it("keeps previewing smaller files after skipping a large one", () => {
+    // Skipping ends that file's preview, not the scan — an ordinary document
+    // queued behind an oversized one is still worth showing, and an oversized
+    // file contributes nothing to the running total because it is never read.
+    expect(previewableFiles([MAX_PDF_BYTES + 1, 512, 512])).toEqual([
+      false,
+      true,
+      true,
+    ]);
+  });
+
+  it("counts only the files it actually opens toward the ceiling", () => {
+    // Two files at the per-file limit reach the merge ceiling exactly, so they
+    // both preview and nothing after them does.
+    expect(previewableFiles([MAX_PDF_BYTES, MAX_PDF_BYTES, 1024])).toEqual([
+      true,
+      true,
+      false,
+    ]);
+    expect(MAX_PDF_BYTES * 2).toBe(MAX_TOTAL_MERGE_BYTES);
+  });
+
+  it("returns nothing for an empty queue", () => {
+    expect(previewableFiles([])).toEqual([]);
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  COVER_WIDTH,
   classifyPreviewError,
   highlightSet,
   MAX_PREVIEW_PAGES,
@@ -120,5 +121,15 @@ describe("pdf-preview: failure classification", () => {
   it("survives a thrown non-error", () => {
     expect(classifyPreviewError("something odd").encrypted).toBe(false);
     expect(classifyPreviewError(null).encrypted).toBe(false);
+  });
+});
+
+describe("pdf-preview: cover thumbnails", () => {
+  it("is narrower than a contact-sheet page, since it shares a row", () => {
+    expect(COVER_WIDTH).toBeLessThan(THUMBNAIL_WIDTH);
+  });
+
+  it("scales a page down to the cover width", () => {
+    expect(thumbnailScale(400, COVER_WIDTH)).toBeCloseTo(0.1);
   });
 });
