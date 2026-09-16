@@ -1,11 +1,11 @@
 import { createRequire } from "node:module";
-import { inflateSync } from "node:zlib";
 import type { Browser, BrowserContext, Page } from "playwright-core";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { resolveChromiumPath } from "./chromium";
 import { makePdf } from "./make-pdf";
+import { readPageLabels } from "./read-pdf";
 import { type RunningServer, startProductionServer } from "./server";
 
 /**
@@ -94,34 +94,7 @@ async function mergedPageLabels(target: Page): Promise<string[]> {
     return btoa(binary);
   });
 
-  const pdf = Buffer.from(base64, "base64");
-  // latin1 is byte-preserving, so string offsets are byte offsets.
-  const text = pdf.toString("latin1");
-  const labels: string[] = [];
-
-  const STREAM = /stream\r?\n/g;
-  let match: RegExpExecArray | null = STREAM.exec(text);
-  while (match !== null) {
-    const start = match.index + match[0].length;
-    const end = text.indexOf("endstream", start);
-    if (end !== -1) {
-      const raw = pdf.subarray(start, end);
-      let body = "";
-      try {
-        body = inflateSync(raw).toString("latin1");
-      } catch {
-        // Not a Flate stream (or not a content stream at all) — the object
-        // streams and xref streams in the file land here too. Skip them.
-        body = raw.toString("latin1");
-      }
-      for (const found of body.matchAll(/\(([A-Z]\d+)\)\s*Tj/g)) {
-        labels.push(found[1]);
-      }
-    }
-    match = STREAM.exec(text);
-  }
-
-  return labels;
+  return readPageLabels(Buffer.from(base64, "base64"));
 }
 
 /** Generous: the first attempt pays for downloading and instantiating qpdf. */
