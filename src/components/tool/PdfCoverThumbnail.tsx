@@ -34,12 +34,21 @@ interface PdfCoverThumbnailProps {
    * size in the row, not inside this component.
    */
   onPageCount?: (pageCount: number | null) => void;
+  /** Rendered width in CSS pixels. Defaults to the list-row size. */
+  width?: number;
+  /**
+   * Called when the cover is activated. When given, the cover is a button
+   * that opens the document to read; without it, it is a plain picture.
+   */
+  onOpen?: () => void;
   className?: string;
 }
 
 export function PdfCoverThumbnail({
   file,
   onPageCount,
+  width = COVER_WIDTH,
+  onOpen,
   className,
 }: PdfCoverThumbnailProps) {
   const { status, pageCount, documentRef } = usePdfDocument(file);
@@ -61,7 +70,7 @@ export function PdfCoverThumbnail({
     "flex shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border bg-background",
     className,
   );
-  const size = { width: COVER_WIDTH, height: Math.round(COVER_WIDTH * 1.3) };
+  const size = { width, height: Math.round(width * 1.3) };
 
   // An empty frame of the same size while loading, or when the page will not
   // draw, so a row never changes height under the reorder buttons.
@@ -69,13 +78,30 @@ export function PdfCoverThumbnail({
     return <div className={frame} style={size} aria-hidden="true" />;
   }
 
+  const canvas = (
+    <PdfPageCanvas documentRef={documentRef} pageNumber={1} width={width} />
+  );
+
+  if (!onOpen) {
+    return (
+      <div className={frame} style={size}>
+        {canvas}
+      </div>
+    );
+  }
+
   return (
-    <PdfPageCanvas
-      documentRef={documentRef}
-      pageNumber={1}
-      width={COVER_WIDTH}
-      className={frame}
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Open ${file?.name ?? "document"}`}
+      className={cn(
+        frame,
+        "cursor-pointer transition-colors hover:border-ring/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+      )}
       style={size}
-    />
+    >
+      {canvas}
+    </button>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { faArrowDown } from "@fortawesome/free-solid-svg-icons/faArrowDown";
-import { faArrowUp } from "@fortawesome/free-solid-svg-icons/faArrowUp";
+import { faArrowLeft } from "@fortawesome/free-solid-svg-icons/faArrowLeft";
+import { faArrowRight } from "@fortawesome/free-solid-svg-icons/faArrowRight";
 import { faDownload } from "@fortawesome/free-solid-svg-icons/faDownload";
 import { faFilePdf } from "@fortawesome/free-solid-svg-icons/faFilePdf";
 import { faLayerGroup } from "@fortawesome/free-solid-svg-icons/faLayerGroup";
@@ -12,6 +12,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertBox } from "@/components/AlertBox";
 import { PdfCoverThumbnail } from "@/components/tool/PdfCoverThumbnail";
+import { PdfViewerDialog } from "@/components/tool/PdfViewerDialog";
 import { RunShortcutHint } from "@/components/tool/RunShortcutHint";
 import {
   ToolBody,
@@ -48,6 +49,9 @@ import {
 
 /** Static path, not a bundled chunk — see the comment in `handleMerge`. */
 const WORKER_URL = "/pdf/qpdf-merge-worker.js";
+
+/** Cover width on a card. Wide enough to recognise a document, not to read it. */
+const COVER_CARD_WIDTH = 110;
 
 /**
  * A queued input. The id is what React keys on: the same file can legitimately
@@ -95,6 +99,8 @@ export default function PdfMergeTool() {
    * incomplete merge with nothing on screen saying a document was dropped.
    */
   const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
+  /** Queue id of the document open in the reader, or null when it is closed. */
+  const [viewerId, setViewerId] = useState<string | null>(null);
 
   const [liveMessage, announce] = useAnnouncer();
   const [resultRef, focusResultOnNextRender] =
@@ -159,6 +165,9 @@ export default function PdfMergeTool() {
       setErrorDetail("");
       setSkippedFiles([]);
       clearResult();
+      // The reader is modal, so no edit can happen while it is open; this only
+      // stops a stale id pointing at a document that has since been removed.
+      setViewerId(null);
       setFiles(update);
     },
     [clearResult],
@@ -597,93 +606,104 @@ export default function PdfMergeTool() {
                 </div>
               ) : (
                 <div className="p-2 sm:p-3">
-                  {/* The order of this list is the order of the merged
-                      document, so it is an ordered list in the markup too. */}
-                  <ol className="space-y-2">
-                    {files.map((queued, index) => (
-                      <li
-                        key={queued.id}
-                        className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-2 sm:px-3"
-                      >
-                        <span
-                          className="w-5 shrink-0 text-center font-mono text-[12px] text-muted-foreground"
-                          aria-hidden="true"
+                  {/* The order of this grid is the order of the merged
+                      document, so it is an ordered list in the markup too. A
+                      grid of cards rather than rows: a document is recognised
+                      by its cover far more readily than by its filename, and a
+                      cover needs room that a table row cannot give it. */}
+                  <ol className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
+                    {files.map((queued, index) => {
+                      const count = pageCounts[queued.id];
+                      return (
+                        <li
+                          key={queued.id}
+                          className="flex flex-col items-center gap-2 rounded-md border border-border bg-background p-3"
+                          data-file={queued.file.name}
                         >
-                          {index + 1}
-                        </span>
-                        <PdfCoverThumbnail
-                          file={previewable[index] ? queued.file : null}
-                          onPageCount={(count) =>
-                            setPageCounts((previous) => {
-                              if (count === null) {
-                                if (!(queued.id in previous)) return previous;
-                                const { [queued.id]: _dropped, ...rest } =
-                                  previous;
-                                return rest;
-                              }
-                              if (previous[queued.id] === count)
-                                return previous;
-                              return { ...previous, [queued.id]: count };
-                            })
-                          }
-                        />
-                        <div className="min-w-0 flex-1">
-                          <span className="block truncate font-mono text-[13px] text-foreground">
-                            {queued.file.name}
-                          </span>
-                          <ToolMeta className="text-[12px]">
-                            {formatBytes(queued.file.size)}
-                            {pageCounts[queued.id] !== undefined &&
-                              ` · ${pageCounts[queued.id]} ${
-                                pageCounts[queued.id] === 1 ? "page" : "pages"
-                              }`}
-                          </ToolMeta>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-0.5">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            disabled={index === 0}
-                            onClick={() => handleMove(index, index - 1)}
-                            aria-label={`Move ${queued.file.name} up`}
-                          >
-                            <FontAwesomeIcon
-                              icon={faArrowUp}
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            disabled={index === files.length - 1}
-                            onClick={() => handleMove(index, index + 1)}
-                            aria-label={`Move ${queued.file.name} down`}
-                          >
-                            <FontAwesomeIcon
-                              icon={faArrowDown}
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            onClick={() => handleRemove(queued.id)}
-                            aria-label={`Remove ${queued.file.name}`}
-                          >
-                            <FontAwesomeIcon
-                              icon={faXmark}
-                              className="h-3 w-3"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
+                          <PdfCoverThumbnail
+                            file={previewable[index] ? queued.file : null}
+                            width={COVER_CARD_WIDTH}
+                            onOpen={
+                              previewable[index]
+                                ? () => setViewerId(queued.id)
+                                : undefined
+                            }
+                            onPageCount={(pages) =>
+                              setPageCounts((previous) => {
+                                if (pages === null) {
+                                  if (!(queued.id in previous)) return previous;
+                                  const { [queued.id]: _dropped, ...rest } =
+                                    previous;
+                                  return rest;
+                                }
+                                if (previous[queued.id] === pages)
+                                  return previous;
+                                return { ...previous, [queued.id]: pages };
+                              })
+                            }
+                          />
+                          <div className="flex w-full min-w-0 flex-col items-center text-center">
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {index + 1}
+                            </span>
+                            <span
+                              className="block w-full truncate font-mono text-[13px] text-foreground"
+                              title={queued.file.name}
+                            >
+                              {queued.file.name}
+                            </span>
+                            <ToolMeta className="text-[12px]">
+                              {formatBytes(queued.file.size)}
+                              {count !== undefined &&
+                                ` · ${count} ${count === 1 ? "page" : "pages"}`}
+                            </ToolMeta>
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={index === 0}
+                              onClick={() => handleMove(index, index - 1)}
+                              aria-label={`Move ${queued.file.name} earlier`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faArrowLeft}
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              disabled={index === files.length - 1}
+                              onClick={() => handleMove(index, index + 1)}
+                              aria-label={`Move ${queued.file.name} later`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faArrowRight}
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => handleRemove(queued.id)}
+                              aria-label={`Remove ${queued.file.name}`}
+                            >
+                              <FontAwesomeIcon
+                                icon={faXmark}
+                                className="h-3 w-3"
+                                aria-hidden="true"
+                              />
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ol>
 
                   <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-1">
@@ -777,6 +797,13 @@ export default function PdfMergeTool() {
           </div>
         </ToolBody>
       </ToolCard>
+
+      {/* Opens its own copy of the document, so a card's lifetime and the
+          reader's never have to agree — see PdfViewerDialog. */}
+      <PdfViewerDialog
+        file={files.find((queued) => queued.id === viewerId)?.file ?? null}
+        onClose={() => setViewerId(null)}
+      />
 
       <ToolFootnote>
         <strong className="font-semibold text-foreground">

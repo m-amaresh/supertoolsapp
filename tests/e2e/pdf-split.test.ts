@@ -571,6 +571,77 @@ describe("pdf split", () => {
     }
   });
 
+  it("opens a page in the reader from its thumbnail", async () => {
+    await open(6);
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(6);
+
+    // Straight to the page that was clicked, not to page one.
+    await page.getByRole("button", { name: "Open page 4" }).click();
+    const dialog = page.getByRole("dialog", { name: "report.pdf" });
+    await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+    await expect
+      .poll(() => dialog.getByText("Page 4 of 6").count(), {
+        timeout: SPLIT_TIMEOUT,
+      })
+      .toBe(1);
+
+    // The reader draws a real page, not an empty frame.
+    await expect
+      .poll(
+        () =>
+          dialog.locator("canvas").evaluate((element) => {
+            const canvas = element as HTMLCanvasElement;
+            const context = canvas.getContext("2d");
+            if (!context || canvas.width === 0) return 0;
+            const { data } = context.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height,
+            );
+            const seen = new Set<number>();
+            for (let i = 0; i < data.length; i += 4) {
+              seen.add((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]);
+            }
+            return seen.size;
+          }),
+        { timeout: SPLIT_TIMEOUT },
+      )
+      .toBeGreaterThan(1);
+
+    await page.keyboard.press("ArrowLeft");
+    await expect.poll(() => dialog.getByText("Page 3 of 6").count()).toBe(1);
+
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+
+    // Reading a page does not disturb the selection the tool is built on.
+    expect(await rangeField(page).isDisabled()).toBe(false);
+  });
+
+  it("closes the reader when the document is cleared", async () => {
+    await open(3);
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(3);
+    await page.getByRole("button", { name: "Open page 2" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+
+    // Clearing and choosing again must not reopen the reader on its own.
+    await page.getByRole("button", { name: "Clear" }).click();
+    await addFile(page, "again.pdf", makePdf("R", 2));
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(2);
+    await page.waitForTimeout(500);
+    expect(await page.getByRole("dialog").count()).toBe(0);
+  });
+
   it("refuses a password-protected PDF instead of silently unprotecting it", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await resetBlobs(page);

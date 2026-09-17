@@ -200,7 +200,7 @@ describe("pdf merge", () => {
   }, 120_000);
 
   it("reorders the documents and merges in the new order", async () => {
-    await page.getByRole("button", { name: "Move beta.pdf up" }).click();
+    await page.getByRole("button", { name: "Move beta.pdf earlier" }).click();
 
     // Editing the list invalidates the result it was built from.
     await downloadLink(page).waitFor({ state: "detached", timeout: 10_000 });
@@ -275,7 +275,9 @@ describe("pdf merge", () => {
     expect(before[0]).toContain("contract.pdf");
     expect(before[0]).toContain("4 pages");
 
-    await page.getByRole("button", { name: "Move appendix.pdf up" }).click();
+    await page
+      .getByRole("button", { name: "Move appendix.pdf earlier" })
+      .click();
     const after = await rowText();
     expect(after[0]).toContain("appendix.pdf");
     expect(after[0]).toContain("2 pages");
@@ -398,6 +400,81 @@ describe("pdf merge", () => {
       expect(pageErrors, pageErrors.join("\n")).toEqual([]);
     } finally {
       page.off("pageerror", onPageError);
+    }
+  });
+
+  it("opens a queued document in the reader from its cover", async () => {
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+    await addFiles(page, [
+      { name: "contract.pdf", buffer: makePdf("A", 3) },
+      { name: "appendix.pdf", buffer: makePdf("B", 2) },
+    ]);
+    await expect
+      .poll(() => page.locator("li canvas").count(), { timeout: MERGE_TIMEOUT })
+      .toBe(2);
+
+    await page.getByRole("button", { name: "Open appendix.pdf" }).click();
+
+    // A real dialog, named after the document, with focus inside it.
+    const dialog = page.getByRole("dialog", { name: "appendix.pdf" });
+    await dialog.waitFor({ state: "visible", timeout: MERGE_TIMEOUT });
+    await expect
+      .poll(() => dialog.getByText("Page 1 of 2").count(), {
+        timeout: MERGE_TIMEOUT,
+      })
+      .toBe(1);
+    expect(
+      await page.evaluate(
+        () => !!document.activeElement?.closest('[role="dialog"]'),
+      ),
+      "focus should move into the dialog",
+    ).toBe(true);
+
+    // Arrow keys page through it; the buttons stop at the ends.
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => dialog.getByText("Page 2 of 2").count()).toBe(1);
+    expect(
+      await dialog.getByRole("button", { name: "Next" }).isDisabled(),
+    ).toBe(true);
+
+    // Escape closes it and focus comes back to the cover that opened it.
+    // Polled: Radix hands focus back a tick after the dialog leaves the DOM.
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () => document.activeElement?.getAttribute("aria-label") ?? null,
+        ),
+      )
+      .toBe("Open appendix.pdf");
+  });
+
+  it("does not offer to open a file it refused to preview", async () => {
+    // The oversized case: no cover was rendered, so there is nothing to read.
+    await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
+    const { mkdtemp, writeFile, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const directory = await mkdtemp(join(tmpdir(), "supertools-merge-"));
+    const hugePath = join(directory, "huge.pdf");
+    await writeFile(
+      hugePath,
+      Buffer.concat([
+        Buffer.from("%PDF-1.4\n", "latin1"),
+        Buffer.alloc(101 * 1024 * 1024, 0x20),
+      ]),
+    );
+    try {
+      await page.locator('input[type="file"]').setInputFiles([hugePath]);
+      await expect
+        .poll(() => page.getByText("huge.pdf").count())
+        .toBeGreaterThan(0);
+      expect(
+        await page.getByRole("button", { name: "Open huge.pdf" }).count(),
+      ).toBe(0);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
     }
   });
 

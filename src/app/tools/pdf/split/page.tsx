@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertBox } from "@/components/AlertBox";
 import { SegmentedControl, ToolbarGroup } from "@/components/Toolbar";
 import { PdfPagePreview } from "@/components/tool/PdfPagePreview";
+import { PdfViewerDialog } from "@/components/tool/PdfViewerDialog";
 import {
   ToolBody,
   ToolCard,
@@ -100,6 +101,8 @@ export default function PdfSplitTool() {
   const [errorDetail, setErrorDetail] = useState<string>("");
   const [result, setResult] = useState<SplitResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  /** Page open in the reader, or null when it is closed. */
+  const [viewerPage, setViewerPage] = useState<number | null>(null);
 
   const workerRef = useRef<Worker | null>(null);
   /**
@@ -314,6 +317,9 @@ export default function PdfSplitTool() {
       setIsCounting(false);
       setPageCount(null);
       setPreviewFile(null);
+      // A reader left open on the old document would otherwise reopen at the
+      // same page the moment a new one loaded.
+      setViewerPage(null);
 
       if (!next) {
         setFile(null);
@@ -787,6 +793,7 @@ export default function PdfSplitTool() {
                 selected={mode === "extract" ? (preview.pages ?? null) : null}
                 onLoaded={handlePreviewLoaded}
                 onFailed={handlePreviewFailed}
+                onOpenPage={setViewerPage}
                 className="mt-3"
               />
             </div>
@@ -963,6 +970,14 @@ export default function PdfSplitTool() {
           )}
         </ToolBody>
       </ToolCard>
+
+      {/* Opens its own copy of the document, so the grid's lifetime and the
+          reader's never have to agree — see PdfViewerDialog. */}
+      <PdfViewerDialog
+        file={viewerPage !== null ? previewFile : null}
+        initialPage={viewerPage ?? 1}
+        onClose={() => setViewerPage(null)}
+      />
 
       <ToolFootnote>
         A password-protected PDF is refused rather than split. Splitting it

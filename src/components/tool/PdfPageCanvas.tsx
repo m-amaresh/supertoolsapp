@@ -24,6 +24,21 @@ interface PdfPageCanvasProps {
   className?: string;
   /** Sizes the frame before the page is drawn, so the layout does not jump. */
   style?: React.CSSProperties;
+  /**
+   * Draw straight away instead of waiting to be scrolled into view.
+   *
+   * For a page that is already the thing being looked at — the viewer — where
+   * waiting on an observer would show an empty frame for no reason.
+   */
+  eager?: boolean;
+  /**
+   * Let the drawn page shrink to its container.
+   *
+   * The backing store still matches the requested width, so the page stays
+   * sharp; only the CSS box gives way. Without this the inline width pdf.js
+   * asks for would overflow a narrow window.
+   */
+  fit?: boolean;
 }
 
 export function PdfPageCanvas({
@@ -32,6 +47,8 @@ export function PdfPageCanvas({
   width = THUMBNAIL_WIDTH,
   className,
   style,
+  eager = false,
+  fit = false,
 }: PdfPageCanvasProps) {
   const holderRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -73,8 +90,14 @@ export function PdfPageCanvas({
         const ratio = window.devicePixelRatio || 1;
         canvas.width = Math.floor(viewport.width * ratio);
         canvas.height = Math.floor(viewport.height * ratio);
-        canvas.style.width = `${Math.floor(viewport.width)}px`;
-        canvas.style.height = `${Math.floor(viewport.height)}px`;
+        if (fit) {
+          canvas.style.width = "100%";
+          canvas.style.height = "auto";
+          canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
+        } else {
+          canvas.style.width = `${Math.floor(viewport.width)}px`;
+          canvas.style.height = `${Math.floor(viewport.height)}px`;
+        }
 
         const context = canvas.getContext("2d");
         if (!context) return;
@@ -90,6 +113,14 @@ export function PdfPageCanvas({
         // caller labelled it with still in place. Nothing else is affected.
       }
     };
+
+    if (eager) {
+      void draw();
+      return () => {
+        cancelled = true;
+        task?.cancel();
+      };
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -107,7 +138,7 @@ export function PdfPageCanvas({
       observer.disconnect();
       task?.cancel();
     };
-  }, [documentRef, drawn, pageNumber, width]);
+  }, [documentRef, drawn, eager, fit, pageNumber, width]);
 
   return (
     <div

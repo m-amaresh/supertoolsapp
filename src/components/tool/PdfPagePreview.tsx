@@ -19,10 +19,10 @@ import { PdfPageCanvas } from "./PdfPageCanvas";
  * from the spec alone; seeing four pages go dark says it immediately.
  *
  * Highlighting is one-way, from the typed range to the page. Clicking a
- * thumbnail deliberately does nothing: a set of clicked pages cannot express a
- * reversed range or a repeated page, both of which this tool supports, so a
- * two-way binding would have to silently discard selections the reader had
- * already typed.
+ * thumbnail opens it to read; it deliberately does *not* toggle selection. A
+ * set of clicked pages cannot express a reversed range or a repeated page,
+ * both of which this tool supports, so a two-way binding would have to
+ * silently discard selections the reader had already typed.
  *
  * Opening and releasing the document is `usePdfDocument`'s job and drawing a
  * page is `PdfPageCanvas`'s, so what is left here is the grid and the
@@ -41,6 +41,11 @@ interface PdfPagePreviewProps {
    * can refuse the file instead of merely losing its thumbnails.
    */
   onFailed: (message: string, encrypted: boolean) => void;
+  /**
+   * Called with a page number when its thumbnail is activated. A thumbnail
+   * says which page; this is how the reader gets to see what is on it.
+   */
+  onOpenPage?: (pageNumber: number) => void;
   className?: string;
 }
 
@@ -49,6 +54,7 @@ export function PdfPagePreview({
   selected,
   onLoaded,
   onFailed,
+  onOpenPage,
   className,
 }: PdfPagePreviewProps) {
   const { status, pageCount, documentRef } = usePdfDocument(file, {
@@ -101,21 +107,29 @@ export function PdfPagePreview({
                   data-page={pageNumber}
                   data-selected={isSelected ? "true" : "false"}
                 >
-                  <PdfPageCanvas
-                    documentRef={documentRef}
-                    pageNumber={pageNumber}
+                  {/* A real button, so the page is reachable from the
+                      keyboard and announced as something that opens. */}
+                  <button
+                    type="button"
+                    onClick={() => onOpenPage?.(pageNumber)}
+                    aria-label={`Open page ${pageNumber}`}
                     className={cn(
-                      "flex items-center justify-center overflow-hidden rounded-sm border bg-background transition-opacity",
+                      "flex cursor-pointer items-center justify-center overflow-hidden rounded-sm border bg-background transition-opacity focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
                       isSelected
                         ? "border-ring ring-2 ring-ring"
-                        : "border-border",
-                      dimmed && !isSelected && "opacity-40",
+                        : "border-border hover:border-ring/60",
+                      dimmed && !isSelected && "opacity-40 hover:opacity-70",
                     )}
                     style={{
                       minWidth: THUMBNAIL_WIDTH,
                       minHeight: THUMBNAIL_WIDTH * 1.2,
                     }}
-                  />
+                  >
+                    <PdfPageCanvas
+                      documentRef={documentRef}
+                      pageNumber={pageNumber}
+                    />
+                  </button>
                   <span
                     className={cn(
                       "text-[11px] tabular-nums",
