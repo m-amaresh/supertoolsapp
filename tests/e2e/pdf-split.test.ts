@@ -642,6 +642,127 @@ describe("pdf split", () => {
     expect(await page.getByRole("dialog").count()).toBe(0);
   });
 
+  it("starts a reopened reader at the page asked for, not the last one visited", async () => {
+    // Regression: the reset depended on initialPage alone, and reopening at
+    // the same requested page — page 1, nearly always — did not reset. A
+    // one-page document opened on "Page 3 of 1" with nothing drawn.
+    await open(4);
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(4);
+    await page.getByRole("button", { name: "Open page 1" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+    await expect
+      .poll(() => dialog.getByText("Page 1 of 4").count(), {
+        timeout: SPLIT_TIMEOUT,
+      })
+      .toBe(1);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
+    await expect.poll(() => dialog.getByText("Page 3 of 4").count()).toBe(1);
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+
+    // A shorter document, opened at the same page 1.
+    await addFile(page, "short.pdf", makePdf("S", 1));
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(1);
+    await page.getByRole("button", { name: "Open page 1" }).click();
+    await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+    await expect
+      .poll(() => dialog.getByText("Page 1 of 1").count(), {
+        timeout: SPLIT_TIMEOUT,
+      })
+      .toBe(1);
+    expect(await dialog.getByText(/Page 3 of/).count()).toBe(0);
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+  });
+
+  it("keeps the whole page reachable in the reader", async () => {
+    // Regression: the page was vertically centred inside its scroll
+    // container, so one taller than the container had its top pushed above
+    // the scroll origin — measured at -18px against a container starting at
+    // 93px — where no scrolling could bring it back. Fitted now, and
+    // top-aligned as the guarantee.
+    await open(2);
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(2);
+    await page.getByRole("button", { name: "Open page 1" }).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+    await expect
+      .poll(
+        () =>
+          dialog
+            .locator("canvas")
+            .evaluate((canvas) => (canvas as HTMLCanvasElement).width),
+        { timeout: SPLIT_TIMEOUT },
+      )
+      .toBeGreaterThan(0);
+
+    const geometry = await dialog.locator("canvas").evaluate((canvas) => {
+      const scroller = canvas.closest(".overflow-auto") as HTMLElement;
+      const c = canvas.getBoundingClientRect();
+      const s = scroller.getBoundingClientRect();
+      return {
+        canvasTop: c.top,
+        canvasBottom: c.bottom,
+        scrollerTop: s.top,
+        scrollerBottom: s.bottom,
+        scrollTop: scroller.scrollTop,
+      };
+    });
+    expect(geometry.scrollTop).toBe(0);
+    expect(
+      geometry.canvasTop,
+      "the top of the page must not be above the scroll area",
+    ).toBeGreaterThanOrEqual(geometry.scrollerTop);
+    expect(
+      geometry.canvasBottom,
+      "the page should fit rather than overflow",
+    ).toBeLessThanOrEqual(geometry.scrollerBottom + 1);
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "hidden" });
+  });
+
+  it("ignores navigation until the document is open", async () => {
+    // Regression: with the page count still zero, the only reachable page
+    // was 1, so an arrow key during "Opening…" threw away the page that had
+    // been asked for. Reached by delaying the renderer.
+    await open(6);
+    await expect
+      .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+      .toBe(6);
+
+    await page.route("**/pdf.worker.min.mjs", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+    try {
+      await page.getByRole("button", { name: "Open page 4" }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.waitFor({ state: "visible", timeout: SPLIT_TIMEOUT });
+      await expect.poll(() => dialog.getByText("Opening…").count()).toBe(1);
+
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+
+      await expect
+        .poll(() => dialog.getByText("Page 4 of 6").count(), {
+          timeout: SPLIT_TIMEOUT,
+        })
+        .toBe(1);
+      await page.keyboard.press("Escape");
+      await dialog.waitFor({ state: "hidden" });
+    } finally {
+      await page.unroute("**/pdf.worker.min.mjs");
+    }
+  });
+
   it("refuses a password-protected PDF instead of silently unprotecting it", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await resetBlobs(page);

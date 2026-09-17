@@ -72,18 +72,36 @@ export function PdfViewerDialog({
     }
   }, [open]);
 
-  // Opening a different document, or the same one at a different page, starts
-  // where the caller asked rather than wherever the last visit ended.
+  /**
+   * Every opening starts where the caller asked, not where the last visit
+   * ended.
+   *
+   * Keyed on the file as well as the page: depending on `initialPage` alone
+   * meant reopening at the same requested page — page 1, almost always — did
+   * not reset at all, so a one-page document could open on "Page 3 of 1" with
+   * nothing drawn because the last document had been left on page 3.
+   */
   useEffect(() => {
-    setPage(initialPage);
-  }, [initialPage]);
+    if (file) setPage(initialPage);
+  }, [file, initialPage]);
 
-  const last = Math.max(pageCount, 1);
+  // Once the length is known, a page past the end is pulled back to the last
+  // one rather than left pointing at nothing.
+  useEffect(() => {
+    if (status !== "ready") return;
+    setPage((current) => Math.min(Math.max(current, 1), pageCount));
+  }, [status, pageCount]);
+
+  const ready = status === "ready";
   const go = useCallback(
     (delta: number) => {
-      setPage((current) => Math.min(Math.max(current + delta, 1), last));
+      // Not before the document is open: with the count still zero the only
+      // reachable page is 1, so a keypress during "Opening…" silently threw
+      // away the page that had been asked for.
+      if (!ready) return;
+      setPage((current) => Math.min(Math.max(current + delta, 1), pageCount));
     },
-    [last],
+    [pageCount, ready],
   );
 
   const handleKeyDown = useCallback(
@@ -108,6 +126,13 @@ export function PdfViewerDialog({
       }}
     >
       <DialogContent
+        // A fixed height rather than the wrapper's max-height, for two
+        // reasons. A reader should keep one frame as pages of different
+        // shapes go by, instead of resizing around each. And the page can only
+        // be fitted to the frame's height if that height is definite: a
+        // max-height alone leaves every percentage below it unresolved, and
+        // the page overflowed by exactly the amount this was meant to prevent.
+        className="h-[92vh]"
         onKeyDown={handleKeyDown}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
@@ -128,7 +153,12 @@ export function PdfViewerDialog({
           </DialogClose>
         </div>
 
-        <div className="flex min-h-[40vh] flex-1 items-center justify-center overflow-auto rounded-md border border-border bg-muted/20 p-3">
+        {/* items-start, not items-center: a flex container centres an
+            oversized child by pushing its top above the scroll origin, where
+            no amount of scrolling can reach it. The page is also fitted to
+            the container's height, so in practice it does not overflow — the
+            alignment is the guarantee for when it somehow still does. */}
+        <div className="flex min-h-[40vh] flex-1 items-start justify-center overflow-auto rounded-md border border-border bg-muted/20 p-3">
           {status === "ready" ? (
             <PdfPageCanvas
               // Keyed on the page so each one mounts fresh. `PdfPageCanvas`
@@ -140,7 +170,7 @@ export function PdfViewerDialog({
               width={VIEWER_WIDTH}
               eager
               fit
-              className="flex w-full items-center justify-center"
+              className="flex h-full w-full items-start justify-center"
             />
           ) : (
             <span className="text-[13px] text-muted-foreground">

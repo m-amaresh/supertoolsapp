@@ -32,11 +32,12 @@ interface PdfPageCanvasProps {
    */
   eager?: boolean;
   /**
-   * Let the drawn page shrink to its container.
+   * Let the drawn page shrink to its container, in both directions.
    *
    * The backing store still matches the requested width, so the page stays
-   * sharp; only the CSS box gives way. Without this the inline width pdf.js
-   * asks for would overflow a narrow window.
+   * sharp; only the CSS box gives way. Without this the inline size pdf.js
+   * asks for would overflow a narrow window sideways, or a short one
+   * vertically.
    */
   fit?: boolean;
 }
@@ -91,9 +92,14 @@ export function PdfPageCanvas({
         canvas.width = Math.floor(viewport.width * ratio);
         canvas.height = Math.floor(viewport.height * ratio);
         if (fit) {
-          canvas.style.width = "100%";
+          // Both axes bounded, neither fixed. A canvas is a replaced element
+          // with an intrinsic ratio, so max-width and max-height together
+          // scale it to fit inside the container without distorting it — and
+          // a page taller than the window shrinks rather than overflowing.
+          canvas.style.width = "auto";
           canvas.style.height = "auto";
-          canvas.style.maxWidth = `${Math.floor(viewport.width)}px`;
+          canvas.style.maxWidth = `min(100%, ${Math.floor(viewport.width)}px)`;
+          canvas.style.maxHeight = "100%";
         } else {
           canvas.style.width = `${Math.floor(viewport.width)}px`;
           canvas.style.height = `${Math.floor(viewport.height)}px`;
