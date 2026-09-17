@@ -365,6 +365,42 @@ describe("pdf merge", () => {
     }
   });
 
+  it("removes a previewed file without throwing", async () => {
+    // Regression, and the path the report came in on: a queued cover is a live
+    // document, and removing its row unmounts it. Releasing called destroy()
+    // on the PDFDocumentProxy, which pdf.js 6 does not have, so the teardown
+    // threw. Leaving the page did the same.
+    const pageErrors: string[] = [];
+    const onPageError = (error: Error) => pageErrors.push(error.message);
+    page.on("pageerror", onPageError);
+
+    try {
+      await page.goto(`${server.baseUrl}${ROUTE}`, {
+        waitUntil: "networkidle",
+      });
+      await addFiles(page, [
+        { name: "first.pdf", buffer: makePdf("A", 2) },
+        { name: "second.pdf", buffer: makePdf("B", 3) },
+      ]);
+      await expect
+        .poll(() => page.locator("li canvas").count(), {
+          timeout: MERGE_TIMEOUT,
+        })
+        .toBe(2);
+
+      await page.getByRole("button", { name: "Remove first.pdf" }).click();
+      await expect
+        .poll(() => page.locator("li canvas").count(), {
+          timeout: MERGE_TIMEOUT,
+        })
+        .toBe(1);
+
+      expect(pageErrors, pageErrors.join("\n")).toEqual([]);
+    } finally {
+      page.off("pageerror", onPageError);
+    }
+  });
+
   it("names the file at fault when one cannot be read", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await addFiles(page, [

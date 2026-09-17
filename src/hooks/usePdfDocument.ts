@@ -34,7 +34,6 @@ export interface PdfPageProxy {
 export interface PdfDocumentProxy {
   numPages: number;
   getPage: (pageNumber: number) => Promise<PdfPageProxy>;
-  destroy: () => Promise<void>;
 }
 
 /**
@@ -48,6 +47,29 @@ export interface PdfDocumentProxy {
 export interface PdfLoadingTask {
   promise: Promise<unknown>;
   destroy: () => Promise<void>;
+}
+
+/**
+ * Releases a loading task, and with it the document and worker it owns.
+ *
+ * The task is the only thing worth destroying: `PDFDocumentProxy` has no
+ * `destroy` of its own in pdf.js 6 — calling one threw "destroy is not a
+ * function" the moment a successfully opened document was replaced or its
+ * page left, which a trailing `.catch()` cannot help with because the throw
+ * happens before there is a promise to reject.
+ *
+ * Wrapped rather than trusted, because this is a third-party shape that has
+ * already changed once: releasing is best-effort, and a teardown must never be
+ * the thing that breaks a page.
+ */
+function releaseTask(task: PdfLoadingTask | null): void {
+  if (!task) return;
+  try {
+    void Promise.resolve(task.destroy()).catch(() => {});
+  } catch {
+    // Already gone, or an API that no longer works this way. Either way there
+    // is nothing useful to do and nothing worth failing for.
+  }
 }
 
 export type PdfDocumentStatus = "idle" | "loading" | "ready" | "failed";
@@ -102,17 +124,13 @@ export function usePdfDocument(
     let cancelled = false;
 
     // Tear down whatever the previous file left behind before anything else,
-    // so two documents are never live at once. The loading task is released
-    // as well as the document: a load that failed has the first and not the
-    // second, and leaving it holds its worker open.
-    const previousDocument = documentRef.current;
+    // so two documents are never live at once. Releasing the task is what does
+    // it: it owns the worker, and it exists whether or not the load ever
+    // produced a document.
     const previousTask = taskRef.current;
     documentRef.current = null;
     taskRef.current = null;
-    void previousDocument?.destroy().catch(() => {
-      // Destroying an already-dead document is not a failure worth reporting.
-    });
-    void previousTask?.destroy().catch(() => {});
+    releaseTask(previousTask);
 
     if (!file) {
       setStatus("idle");
@@ -156,7 +174,7 @@ export function usePdfDocument(
         const opened = (await task.promise) as unknown as PdfDocumentProxy;
 
         if (cancelled) {
-          void opened.destroy().catch(() => {});
+          releaseTask(ownTask);
           if (taskRef.current === ownTask) taskRef.current = null;
           return;
         }
@@ -169,7 +187,7 @@ export function usePdfDocument(
         // Release this attempt's own worker, whether or not it still owns the
         // state — and leave the shared ref alone unless it is still pointing
         // here, so a newer file's task survives an older file's failure.
-        void ownTask?.destroy().catch(() => {});
+        releaseTask(ownTask);
         if (taskRef.current === ownTask) taskRef.current = null;
         if (cancelled) return;
         setStatus("failed");
@@ -188,9 +206,8 @@ export function usePdfDocument(
   // not outlive the page.
   useEffect(() => {
     return () => {
-      void documentRef.current?.destroy().catch(() => {});
       documentRef.current = null;
-      void taskRef.current?.destroy().catch(() => {});
+      releaseTask(taskRef.current);
       taskRef.current = null;
     };
   }, []);

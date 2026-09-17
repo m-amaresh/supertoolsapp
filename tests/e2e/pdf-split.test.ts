@@ -537,6 +537,40 @@ describe("pdf split", () => {
     }
   });
 
+  it("replaces one valid document with another without throwing", async () => {
+    // Regression: releasing a preview called destroy() on the PDFDocumentProxy,
+    // which pdf.js 6 does not have — only the loading task does. It threw
+    // "destroy is not a function" synchronously, so the trailing .catch()
+    // could not help, and it only fired once a *successfully opened* document
+    // was replaced or its page left. Every existing test either navigated
+    // fresh or replaced a document that had failed to open, so none reached it.
+    const pageErrors: string[] = [];
+    const onPageError = (error: Error) => pageErrors.push(error.message);
+    page.on("pageerror", onPageError);
+
+    try {
+      await open(4);
+      await expect
+        .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+        .toBe(4);
+
+      // The second document opens over the first, which is what runs the
+      // teardown on a live document.
+      await addFile(page, "second.pdf", makePdf("Q", 7));
+      await expect
+        .poll(() => thumbnails(page).count(), { timeout: SPLIT_TIMEOUT })
+        .toBe(7);
+
+      // And clearing tears the second one down the same way.
+      await page.getByRole("button", { name: "Clear" }).click();
+      await expect.poll(() => thumbnails(page).count()).toBe(0);
+
+      expect(pageErrors, pageErrors.join("\n")).toEqual([]);
+    } finally {
+      page.off("pageerror", onPageError);
+    }
+  });
+
   it("refuses a password-protected PDF instead of silently unprotecting it", async () => {
     await page.goto(`${server.baseUrl}${ROUTE}`, { waitUntil: "networkidle" });
     await resetBlobs(page);
