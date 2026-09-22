@@ -109,7 +109,6 @@ export default function CsvJsonConverter() {
     [setError, setOutput],
   );
 
-  // Debounce conversion by 300ms so we don't re-parse on every keystroke.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {

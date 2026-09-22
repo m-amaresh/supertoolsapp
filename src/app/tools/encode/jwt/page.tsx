@@ -78,7 +78,6 @@ export default function JwtDecoder() {
     if (text !== null) setInput(text);
   }, [readText, setInput]);
 
-  // Build a sample JWT inline using base64url encoding (no padding, URL-safe chars).
   const handleSample = useCallback(() => {
     const header = btoa(JSON.stringify(SAMPLE_HEADER))
       .replace(/=/g, "")

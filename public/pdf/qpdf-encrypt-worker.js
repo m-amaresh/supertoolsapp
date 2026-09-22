@@ -34,10 +34,7 @@ const initQpdf = self.Module;
 const INPUT_PATH = "in.pdf";
 const OUTPUT_PATH = "out.pdf";
 
-// The qpdf build binds console.log/console.error by value when its factory
-// runs, so its output cannot be redirected through Module options. Patch the
-// worker's own console up front and collect the lines instead. This worker
-// exists only to run qpdf, so nothing else is affected.
+// qpdf captures console methods at factory startup; patch them first to collect output.
 let captured = [];
 console.log = (...args) => {
   captured.push(args.map(String).join(" "));
@@ -52,10 +49,7 @@ function drainOutput() {
   return text;
 }
 
-// qpdf exits 0 on success and 3 when it succeeded but printed warnings, such
-// as a cross-reference table it had to repair. A file that warns is still
-// perfectly encryptable, so both codes continue. Mirrors `isQpdfSuccess` in
-// src/lib/qpdf.ts, which classifies the codes for the UI.
+// Exit 3 means success with warnings; keep this in sync with isQpdfSuccess.
 function succeeded(exitCode) {
   return exitCode === 0 || exitCode === 3;
 }
@@ -81,8 +75,7 @@ function argsAreWellFormed(args) {
 }
 
 self.onmessage = async (event) => {
-  // Dedicated workers only receive messages from their creator, so `origin` is
-  // the empty string. Reject anything else as defense in depth.
+  // Dedicated worker messages have an empty origin.
   if (event.origin !== "" && event.origin !== self.location.origin) {
     return;
   }
@@ -125,7 +118,6 @@ self.onmessage = async (event) => {
       return;
     }
 
-    // Pass 2: write the protected copy.
     const encryptCode = qpdf.callMain(data.args);
     const encryptOutput = drainOutput();
 

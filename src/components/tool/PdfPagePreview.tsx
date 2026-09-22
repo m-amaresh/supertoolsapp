@@ -29,11 +29,11 @@ import { PdfPageCanvas } from "./PdfPageCanvas";
  * highlighting.
  */
 interface PdfPagePreviewProps {
-  /** The document to show. Null clears the grid. */
+  /** Null clears the grid. */
   file: File | null;
-  /** Pages to highlight; null highlights nothing. */
+  /** Null highlights no pages. */
   selected: number[] | null;
-  /** Called with the page count once the document opens. */
+  /** Called after the document opens. */
   onLoaded: (pageCount: number) => void;
   /**
    * Called when the document cannot be previewed. `encrypted` marks the one

@@ -49,7 +49,6 @@ import {
   validateRequestMetadata,
 } from "@/lib/pdf-encrypt";
 
-/** Static path, not a bundled chunk — see the comment in `handleEncrypt`. */
 const WORKER_URL = "/pdf/qpdf-encrypt-worker.js";
 
 /** Scratch paths inside the worker's Emscripten filesystem. */
@@ -91,22 +90,14 @@ export default function PdfEncryptTool() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const resultUrlRef = useRef<string | null>(null);
-  /**
-   * Identifies the in-flight attempt. Selecting a file, editing any field,
-   * clearing, starting again and unmounting all bump it; anything asynchronous
-   * compares against it before publishing, so a stale worker response can no
-   * longer overwrite the current selection or reappear after a Clear.
-   */
+  /** Invalidates asynchronous results after any input change or unmount. */
   const attemptRef = useRef(0);
 
-  // Picking a file moves you to the next step rather than leaving you to find
-  // it. Only on selection, so clearing does not yank focus.
+  // Move focus only on selection, not on Clear.
   useEffect(() => {
     if (file) passwordInputRef.current?.focus();
   }, [file]);
 
-  // Tear down the worker and revoke the blob URL when leaving the page, so no
-  // document bytes outlive the tab.
   useEffect(() => {
     return () => {
       attemptRef.current += 1;
@@ -119,15 +110,7 @@ export default function PdfEncryptTool() {
     };
   }, []);
 
-  /**
-   * Abandons whatever is in flight.
-   *
-   * Bumping the counter alone is not enough: the abandoned attempt returns
-   * early from its callbacks, so nothing would ever clear `isWorking` and the
-   * tool would sit on "Protecting…" forever with the button disabled. The
-   * abandoning action owns the reset, because at that moment there is no
-   * successor attempt to do it — a new run sets `isWorking` itself.
-   */
+  /** Clear working state here; ignored callbacks cannot reset it later. */
   const abandonAttempt = useCallback(() => {
     attemptRef.current += 1;
     workerRef.current?.terminate();
@@ -144,7 +127,6 @@ export default function PdfEncryptTool() {
     setResult(null);
   }, [abandonAttempt]);
 
-  /** Any edit invalidates the result on screen, which was built from the old values. */
   const resetOutput = useCallback(() => {
     setError(null);
     setErrorDetail("");
@@ -178,13 +160,7 @@ export default function PdfEncryptTool() {
     [resetOutput],
   );
 
-  /**
-   * Opens the native file picker.
-   *
-   * The visible control has to be a real `<button>`: a `<label>` is not
-   * focusable, and the input it points at is `display: none`, so neither was
-   * reachable by Tab — the whole workflow was unusable from the keyboard.
-   */
+  /** The visible button opens the hidden input so keyboard users can reach it. */
   const openFilePicker = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -230,9 +206,7 @@ export default function PdfEncryptTool() {
 
     resetOutput();
 
-    // Everything knowable without reading the file is checked first, so an
-    // oversized file is refused before it is allocated in page memory, and a
-    // mistyped confirmation never reaches the engine.
+    // Validate metadata before allocating file bytes or starting the engine.
     const invalidMetadata = validateRequestMetadata(
       file.size,
       password,
@@ -256,8 +230,7 @@ export default function PdfEncryptTool() {
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
 
-      // Reading the file is async; the user may have moved on, or the page may
-      // have unmounted, while it was pending.
+      // Ignore a read completed after an input change or unmount.
       if (attempt !== attemptRef.current) return;
 
       const invalid = validateRequest(bytes, options);
@@ -267,13 +240,10 @@ export default function PdfEncryptTool() {
         return;
       }
 
-      // A fresh worker per attempt: it starts with clean WASM memory and is
-      // terminated as soon as it answers, which discards the file bytes and
-      // the password along with them.
-      // Served from /pdf/ rather than bundled so the CSP relaxation that
-      // WebAssembly needs stays confined to that path — see next.config.ts.
+      // A fresh worker drops file bytes and passwords after each run. Its
+      // /pdf/ URL confines the required CSP relaxation to that path.
       workerRef.current?.terminate();
-      // Classic worker: the qpdf glue is a UMD bundle loaded via importScripts.
+      // qpdf's UMD bundle requires a classic worker.
       const worker = new Worker(WORKER_URL);
       workerRef.current = worker;
 
@@ -290,8 +260,7 @@ export default function PdfEncryptTool() {
           return;
         }
 
-        // `bytes` wraps the whole transferred buffer, so passing `.buffer`
-        // straight through is safe and avoids a second copy.
+        // The result occupies the whole transferred buffer; no copy is needed.
         const blob = new Blob([outcome.bytes.buffer as ArrayBuffer], {
           type: "application/pdf",
         });
@@ -321,7 +290,6 @@ export default function PdfEncryptTool() {
       // worker, so the flag contract with qpdf has unit-test coverage.
       const args = buildEncryptArgs(options, INPUT_PATH, OUTPUT_PATH);
 
-      // Transfer the buffer so the bytes are moved, not copied.
       const buffer = bytes.buffer as ArrayBuffer;
       worker.postMessage({ bytes: buffer, args }, [buffer]);
     } catch (e) {

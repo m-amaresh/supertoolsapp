@@ -1,12 +1,4 @@
-/**
- * Types and pure helpers for the PDF merge tool.
- *
- * The merge itself runs in a Web Worker (`public/pdf/qpdf-merge-worker.js`)
- * driving the same WebAssembly build of qpdf as the unlock tool. Everything in
- * this file is framework- and DOM-independent so it can be unit tested
- * directly, and every decision about what qpdf's output *means* lives here
- * rather than in the untyped worker.
- */
+/** Interpret qpdf worker results and validate requests for the PDF merge tool. */
 
 import {
   extractWarnings,
@@ -23,43 +15,19 @@ export { formatBytes, looksLikePdf, MAX_PDF_BYTES };
 /** Merging one file is a no-op, so the action needs at least two. */
 export const MIN_MERGE_FILES = 2;
 
-/**
- * Upper bound on the list length. Well past any real merge, and low enough
- * that the argv and the file list stay manageable.
- */
+/** Caps the argument list and the number of files held in memory. */
 export const MAX_MERGE_FILES = 50;
 
 /**
- * Ceiling on the combined size of the inputs.
- *
- * Measured rather than estimated: merging 4 x 50 MB took resident memory from
- * 54 MB to 410 MB, about 2.05x the input, because the transferred bytes and
- * their MEMFS copies are both live until the worker releases each buffer. The
- * merge itself added only ~17 MB on top — qpdf streams, it does not slurp.
- *
- * So this ceiling implies a few hundred MB of tab memory at peak. That is
- * comfortable on a desktop and near the edge on a low-end phone, where the
- * browser may reclaim the tab instead of reporting an error. If mobile reports
- * come in, lower this before anything else.
- *
- * Per-file size is capped separately at `MAX_PDF_BYTES`.
+ * Transferred bytes and MEMFS copies coexist. A measured 200 MB merge used
+ * roughly 410 MB of resident memory, so cap the combined input at 200 MB.
+ * Each file is also capped by `MAX_PDF_BYTES`.
  */
 export const MAX_TOTAL_MERGE_BYTES = 200 * 1024 * 1024;
 
 /**
- * Which queued files may be opened for a cover preview.
- *
- * Previewing reads the whole document into memory, and the merger's size
- * limits were only checked when Merge was pressed — so a 500 MB file was
- * loaded the moment it joined the list, long before anything refused it. The
- * same ceilings therefore gate the previews: anything over `MAX_PDF_BYTES` is
- * never opened, and the rest are taken in order only while their running total
- * stays within `MAX_TOTAL_MERGE_BYTES`.
- *
- * A file that would breach the running total is skipped rather than ending the
- * scan, so a small document after a large one still gets its cover. Skipping a
- * preview costs nothing but a thumbnail: `validateSelection` still decides
- * whether the merge itself may proceed, and says why.
+ * Apply merge size limits before previews load entire files. Skip an oversized
+ * preview without blocking later files; `validateSelection` governs the merge.
  */
 export function previewableFiles(sizes: number[]): boolean[] {
   let running = 0;
@@ -91,7 +59,6 @@ export interface PdfMergeInput {
 
 export interface PdfMergeSuccess {
   ok: true;
-  /** The combined PDF. */
   bytes: Uint8Array;
   /** Pages in the result, or null when qpdf would not report it. */
   pageCount: number | null;
@@ -109,7 +76,7 @@ export interface PdfMergeFailure {
   ok: false;
   code: PdfMergeErrorCode;
   message: string;
-  /** Raw qpdf output, useful for the details panel. */
+  /** Sanitized qpdf output for the details panel. */
   detail: string;
   /**
    * The input that caused it, named as the reader named it. Null when the
@@ -126,19 +93,10 @@ export interface PdfMergeWorkerRequest {
   buffers: ArrayBuffer[];
 }
 
-/**
- * Message posted back by the worker.
- *
- * The worker is a thin runner: it reports which qpdf pass it reached, that
- * pass's exit code and the raw console output. Interpretation happens on the
- * main thread via `interpretMergeResponse`.
- */
+/** Raw worker report; `interpretMergeResponse` classifies it on the main thread. */
 export interface PdfMergeWorkerResponse {
-  /** Which stage the worker reached before reporting back. */
   stage: "startup" | "merge";
-  /** Exit code of the qpdf invocation for that stage. */
   exitCode: number;
-  /** Combined stdout/stderr captured from qpdf. */
   output: string;
   /** Pages in the merged file. Null when the count could not be read. */
   pageCount: number | null;

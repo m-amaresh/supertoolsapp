@@ -5,9 +5,7 @@ interface RelatedToolsProps {
   path: string;
 }
 
-// Internal links to sibling tools in the same category, topped up with featured
-// tools so every page links out to peers. Improves crawl depth, topical
-// relevance, and time-on-site.
+// Fill gaps in a category's sibling list with featured tools.
 export function RelatedTools({ path }: RelatedToolsProps) {
   const current = toolDefinitions.find((t) => t.href === path);
   if (!current) return null;

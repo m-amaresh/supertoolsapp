@@ -193,7 +193,6 @@ export function parseColor(input: string): ColorResult {
     return { ...errorResult, error: null };
   }
 
-  // Try HEX
   const hexMatch = trimmed.match(/^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
   if (hexMatch) {
     const rgb = hexToRgb(hexMatch[1]);
@@ -208,7 +207,6 @@ export function parseColor(input: string): ColorResult {
     }
   }
 
-  // Try rgb(r, g, b) or rgb(r g b)
   const rgbMatch = trimmed.match(
     /^rgba?\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/,
   );
@@ -227,7 +225,6 @@ export function parseColor(input: string): ColorResult {
     }
   }
 
-  // Try hsl(h, s%, l%)
   const hslMatch = trimmed.match(
     /^hsla?\(\s*(\d{1,3})\s*[,\s]\s*(\d{1,3})%?\s*[,\s]\s*(\d{1,3})%?\s*(?:[,/]\s*[\d.]+%?\s*)?\)$/,
   );
@@ -272,7 +269,6 @@ export function parseColor(input: string): ColorResult {
     }
   }
 
-  // Try bare r,g,b
   const bareRgb = trimmed.match(/^(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})$/);
   if (bareRgb) {
     const r = Number.parseInt(bareRgb[1], 10);
@@ -301,8 +297,7 @@ export function generatePalette(hex: string, count: number): string[] {
 
   const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
 
-  // When saturation is too low, hue rotation produces identical colors.
-  // Generate a lightness ramp instead.
+  // Hue shifts are invisible for near-neutral colors; vary lightness instead.
   if (hsl.s < 5) {
     const colors: string[] = [];
     const step = 100 / (count + 1);

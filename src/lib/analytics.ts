@@ -29,7 +29,7 @@ export function isAnalyticsConfigured(id: string = GA_MEASUREMENT_ID): boolean {
   );
 }
 
-/** Optional storage starts denied; essential functionality remains available. */
+/** Optional storage starts denied until the visitor grants consent. */
 export const CONSENT_DEFAULTS: Readonly<Record<string, string>> = {
   ad_storage: "denied",
   ad_user_data: "denied",
@@ -66,7 +66,6 @@ export function buildConsentBootstrap(id: string): string {
   ].join("");
 }
 
-/** Source URL for the GA library. */
 export function gtagScriptUrl(id: string): string {
   return `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id.trim())}`;
 }

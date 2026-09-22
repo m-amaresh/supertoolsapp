@@ -49,7 +49,6 @@ import {
   validateRequestMetadata,
 } from "@/lib/pdf-split";
 
-/** Static path, not a bundled chunk — see the comment in `runSplit`. */
 const WORKER_URL = "/pdf/qpdf-split-worker.js";
 
 const modeOptions: { value: PdfSplitMode; label: string }[] = [
@@ -61,14 +60,7 @@ interface ResultPiece {
   name: string;
   url: string;
   size: number;
-  /**
-   * The Blob behind `url`, kept so the archive can be built from it.
-   *
-   * Not re-fetched from the blob URL: the app serves a strict
-   * `connect-src 'self'`, which blocks fetch and XHR against `blob:`. Holding
-   * the reference costs nothing — the Blob exists either way — and reading it
-   * back goes nowhere near the network.
-   */
+  /** Keep the Blob for archive creation; CSP blocks fetching its blob URL. */
   blob: Blob;
 }
 
@@ -81,13 +73,8 @@ interface SplitResult {
 export default function PdfSplitTool() {
   const [file, setFile] = useState<File | null>(null);
   /**
-   * The document the preview may open, which is not always the one on screen.
-   *
-   * A refused file still has its name shown beside the error, but must never
-   * reach the renderer: pdf.js opens an owner-password document quite happily,
-   * would report a page count, and that count re-enables every field — so the
-   * refusal would be displayed and not enforced. Keeping the two apart makes
-   * that impossible rather than merely unlikely.
+   * Only cleared files reach pdf.js. It can open an owner-password PDF and
+   * report a page count, which would re-enable inputs despite a refusal.
    */
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [pageCount, setPageCount] = useState<number | null>(null);
@@ -106,38 +93,16 @@ export default function PdfSplitTool() {
 
   const workerRef = useRef<Worker | null>(null);
   /**
-   * The counting worker, kept apart from the splitting one.
-   *
-   * Separate attempt counters were not enough: `abandonAttempt` terminates
-   * whatever `workerRef` holds, and counting used that same ref. A mode change
-   * — which routes through `resetOutput` to abandon an in-flight *split* —
-   * therefore killed an in-flight *count* mid-flight. No message ever arrived,
-   * so `isCounting` stayed true and the tool sat on "Reading the PDF" forever
-   * with every field disabled. Ownership has to be separate, not just the
-   * bookkeeping.
+   * Counting owns a separate worker. A mode change cancels an active split;
+   * sharing the worker used to cancel counting too and leave the UI disabled.
    */
   const countWorkerRef = useRef<Worker | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const specInputRef = useRef<HTMLInputElement>(null);
-  /** Every object URL handed out, so none outlives the result it belongs to. */
   const urlsRef = useRef<string[]>([]);
-  /**
-   * Identifies the in-flight attempt. Selecting a file, editing any field,
-   * clearing, starting again and unmounting all bump it; anything asynchronous
-   * compares against it before publishing, so a stale worker response can no
-   * longer overwrite the current selection or reappear after a Clear.
-   */
+  /** Invalidates split results after any input change or unmount. */
   const attemptRef = useRef(0);
-  /**
-   * Counting has a lifecycle of its own, separate from `attemptRef`.
-   *
-   * Sharing one counter meant a mode change — which routes through
-   * `resetOutput` to abandon any in-flight *split* — also abandoned an
-   * in-flight *count*. On the fallback path that left the tool stranded: the
-   * page count never arrived, so every field stayed disabled with no way back
-   * short of re-picking the file. Only choosing a different document ends a
-   * count, which is what this counter tracks.
-   */
+  /** A mode change cancels a split, but only a new file cancels its count. */
   const countAttemptRef = useRef(0);
 
   const revokeUrls = useCallback(() => {
@@ -145,8 +110,6 @@ export default function PdfSplitTool() {
     urlsRef.current = [];
   }, []);
 
-  // Tear down the worker and revoke every blob URL when leaving the page, so
-  // no document bytes outlive the tab.
   useEffect(() => {
     return () => {
       attemptRef.current += 1;
@@ -161,13 +124,8 @@ export default function PdfSplitTool() {
   }, []);
 
   /**
-   * Abandons whatever is in flight.
-   *
-   * Bumping the counter alone is not enough: the abandoned attempt returns
-   * early from its callbacks, so nothing would ever clear `isWorking` and the
-   * tool would sit on "Splitting…" forever with the button disabled. The
-   * abandoning action owns the reset, because at that moment there is no
-   * successor attempt to do it — a new run sets `isWorking` itself.
+   * Clear working state when abandoning a run. Stale callbacks return early,
+   * so none of them can clear the spinner after this point.
    */
   const abandonAttempt = useCallback(() => {
     attemptRef.current += 1;
@@ -182,7 +140,6 @@ export default function PdfSplitTool() {
     setResult(null);
   }, [abandonAttempt, revokeUrls]);
 
-  /** Any edit invalidates the result on screen, which came from the old values. */
   const resetOutput = useCallback(() => {
     setError(null);
     setErrorDetail("");
@@ -190,20 +147,8 @@ export default function PdfSplitTool() {
   }, [clearResult]);
 
   /**
-   * Spins up the engine purely to ask how many pages the document has.
-   *
-   * The page count is not a nicety here: a range cannot be checked, and a
-   * chunk size cannot be turned into a number of files, without it. Doing it
-   * on selection means the answer is on screen before the reader types, rather
-   * than arriving as an error afterwards.
-   */
-  /**
-   * Asks the engine how long the document is.
-   *
-   * `previewAfter` is for the suspicion path: when the byte heuristic flagged
-   * a file and qpdf then reports it clean, the thumbnails it had been denied
-   * are turned back on. The pdf.js-failure path passes false, because handing
-   * the renderer a document it has already failed on would only fail again.
+   * Counts pages with qpdf when pdf.js cannot, or when an encryption hint needs
+   * confirmation. `previewAfter` re-enables thumbnails only after a false alarm.
    */
   const countPages = useCallback(async (target: File, previewAfter = false) => {
     const attempt = countAttemptRef.current;
@@ -271,25 +216,9 @@ export default function PdfSplitTool() {
   }, []);
 
   /**
-   * Refuses a protected document the moment it is chosen.
-   *
-   * qpdf is the authority and refuses again at split time, but that is far too
-   * late to be the only answer: pdf.js opens a document whose *user* password
-   * is empty — the owner-password-only case, which is most of what people have
-   * — so the preview would render happily and the refusal would not arrive
-   * until after a range had been typed and Split pressed.
-   *
-   * Only the head and tail are read. The trailer lives at the end of the file
-   * and a linearized document repeats one at the front, so a 100 MB PDF is
-   * answered by two 8 KB reads rather than by loading it.
-   */
-  /**
-   * Whether a document announces encryption, without reading it.
-   *
-   * Only the head and tail. The trailer lives at the end of the file and a
-   * linearized document repeats one at the front, so a 100 MB PDF is answered
-   * by two 8 KB reads. A file that cannot be read here is left to the engine,
-   * which will say so in a moment with a better message than this could.
+   * Check 8 KB at each end for an encryption hint before opening pdf.js.
+   * The trailer is at the end, or also at the front in a linearized file.
+   * Read failures fall through to qpdf, which provides the final verdict.
    */
   const readsAsProtected = useCallback(async (target: File) => {
     const WINDOW = 8192;

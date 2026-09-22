@@ -8,9 +8,7 @@ interface ToolBreadcrumbsProps {
   path: string;
 }
 
-// Visible breadcrumb trail plus BreadcrumbList JSON-LD so search engines can
-// render breadcrumb rich results. Home, the category hub page, and the current
-// tool are all included as fully-linked crumbs.
+// Use the same linked trail for navigation and BreadcrumbList JSON-LD.
 export function ToolBreadcrumbs({ path }: ToolBreadcrumbsProps) {
   const tool = toolDefinitions.find((t) => t.href === path);
   if (!tool) return null;

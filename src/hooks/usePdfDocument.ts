@@ -67,8 +67,7 @@ function releaseTask(task: PdfLoadingTask | null): void {
   try {
     void Promise.resolve(task.destroy()).catch(() => {});
   } catch {
-    // Already gone, or an API that no longer works this way. Either way there
-    // is nothing useful to do and nothing worth failing for.
+    // Teardown may fail if the task is already gone or pdf.js changes its API.
   }
 }
 
@@ -123,10 +122,7 @@ export function usePdfDocument(
   useEffect(() => {
     let cancelled = false;
 
-    // Tear down whatever the previous file left behind before anything else,
-    // so two documents are never live at once. Releasing the task is what does
-    // it: it owns the worker, and it exists whether or not the load ever
-    // produced a document.
+    // Release the previous loading task and its worker, even if it never opened.
     const previousTask = taskRef.current;
     documentRef.current = null;
     taskRef.current = null;
@@ -141,19 +137,13 @@ export function usePdfDocument(
     setStatus("loading");
 
     void (async () => {
-      // The task this attempt created, held locally. `taskRef` is shared, and
-      // by the time a late rejection lands it may already point at a newer
-      // file's task — destroying that would take down the replacement's
-      // preview, which is exactly what used to happen.
+      // Hold this attempt's task locally: a late rejection must not destroy a
+      // newer task now stored in the shared ref.
       let ownTask: PdfLoadingTask | null = null;
       try {
-        // Dynamic, so the renderer is fetched on first use rather than being
-        // part of the page's own bundle.
+        // Load the renderer only when a preview is opened.
         const pdfjs = await import("pdfjs-dist");
-        // Served from public/pdfjs/ rather than public/pdf/: pdf.js needs
-        // neither WebAssembly nor eval, so it has no business inheriting the
-        // relaxed policy that directory carries for qpdf. See next.config.ts
-        // and scripts/copy-pdfjs-worker.mjs.
+        // /pdfjs/ keeps this worker outside qpdf's relaxed /pdf/ CSP.
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdfjs/pdf.worker.min.mjs";
 
         const bytes = new Uint8Array(await file.arrayBuffer());
@@ -161,13 +151,11 @@ export function usePdfDocument(
 
         const task = pdfjs.getDocument({
           data: bytes,
-          // The preview never needs to look anything up over the network, and
-          // connect-src 'self' would block it if it tried.
+          // The full file is already in memory; disable further range/stream reads.
           disableAutoFetch: true,
           disableStream: true,
         }) as unknown as PdfLoadingTask;
-        // Held from the moment it exists, so every exit below can release it —
-        // including the one where `await` throws and no document is ever made.
+        // Keep the loading task even if awaiting its document rejects.
         ownTask = task;
         taskRef.current = task;
 
@@ -184,9 +172,7 @@ export function usePdfDocument(
         setStatus("ready");
         onLoadedRef.current?.(opened.numPages);
       } catch (error) {
-        // Release this attempt's own worker, whether or not it still owns the
-        // state — and leave the shared ref alone unless it is still pointing
-        // here, so a newer file's task survives an older file's failure.
+        // Release this task without disturbing a newer task in the shared ref.
         releaseTask(ownTask);
         if (taskRef.current === ownTask) taskRef.current = null;
         if (cancelled) return;
@@ -202,8 +188,6 @@ export function usePdfDocument(
     };
   }, [file]);
 
-  // Drop the document when the caller goes away, so its worker and buffers do
-  // not outlive the page.
   useEffect(() => {
     return () => {
       documentRef.current = null;

@@ -47,7 +47,6 @@ export function decodeJwt(token: string): JwtResult {
   const trimmed = token.trim();
   if (!trimmed) return empty;
 
-  // Strip "Bearer " prefix if present
   const cleaned = trimmed.replace(/^Bearer\s+/i, "");
 
   const parts = cleaned.split(".");

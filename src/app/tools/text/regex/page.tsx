@@ -41,7 +41,6 @@ const REGEX_TIMEOUT_MS = 500;
 export default function RegexTester() {
   const { readText, pasteError } = useClipboard();
 
-  // This tool keeps its own state because it has two inputs and worker-driven results.
   const [pattern, setPattern] = useState("");
   const [testString, setTestString] = useState("");
   const [flagG, setFlagG] = useState(true);

@@ -57,9 +57,7 @@ export function ToolToolbar({ children, className }: ToolToolbarProps) {
     <div
       data-slot="tool-toolbar"
       className={cn(
-        // Collapses when it holds nothing interactive. Most toolbar controls are
-        // conditional (Clear, Swap, Copy), so in a pristine state several tools
-        // rendered an empty 25px bordered bar.
+        // Hide the bar when its conditional controls leave it empty.
         "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 [&>div]:flex-wrap",
         "[&:not(:has(button,a,label,input,select,[role=radio]))]:hidden",
         className,
@@ -73,16 +71,8 @@ export function ToolToolbar({ children, className }: ToolToolbarProps) {
 interface ToolOptionsBarProps extends React.PropsWithChildren, ClassNameProps {}
 
 /**
- * Settings for the tool.
- *
- * Below `sm` this collapses behind a "Settings" toggle. Wrapped, the bar runs
- * to ~110px on aes and ~125px on password, which together with the toolbar
- * spent about a fifth of a 375px viewport on chrome before the first field —
- * on the password page only one of the tool's own fields was above the fold.
- *
- * From `sm` up the panel is always shown and the toggle is hidden, so a desktop
- * layout is unchanged and collapsing on a phone cannot strand the settings on a
- * wider screen.
+ * Collapses settings below `sm` to leave room for inputs. On wider screens the
+ * panel stays visible, regardless of the mobile toggle state.
  */
 export function ToolOptionsBar({ children, className }: ToolOptionsBarProps) {
   const [open, setOpen] = useState(false);

@@ -11,7 +11,6 @@
  * never the reverse.
  */
 
-/** Where the visitor's choice is kept. Namespaced so it is recognisable. */
 export const CONSENT_NAMESPACE = "supertools_consent";
 
 /**
@@ -22,7 +21,6 @@ export const CONSENT_NAMESPACE = "supertools_consent";
 export const ANALYTICS_CONSENT_KEY = `stcm.${CONSENT_NAMESPACE}.consent.analytics`;
 export const HAS_CONSENTED_KEY = `stcm.${CONSENT_NAMESPACE}.hasConsented`;
 
-/** The gtag signal the banner's analytics toggle controls. */
 export const ANALYTICS_CONSENT_SIGNAL = "analytics_storage";
 
 export function hasAnalyticsConsent(): boolean {

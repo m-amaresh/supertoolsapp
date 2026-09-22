@@ -1,20 +1,6 @@
 /**
- * Types and pure helpers for the PDF split tool.
- *
- * The split itself runs in a Web Worker (`public/pdf/qpdf-split-worker.js`)
- * driving the same WebAssembly build of qpdf as the other three PDF tools.
- * Everything in this file is framework- and DOM-independent so it can be unit
- * tested directly, and every decision about what qpdf's output *means* lives
- * here rather than in the untyped worker.
- *
- * Two modes, because they answer different questions:
- *
- * - **extract** pulls a page selection into one document. The selection is
- *   resolved to an explicit page list *here* (see `parsePageRange`) and that
- *   list is what reaches qpdf, so the count shown before the run is the count
- *   the run produces.
- * - **chunks** cuts the document into fixed-size pieces with
- *   `--split-pages=N`, which writes several files qpdf names itself.
+ * Interpret qpdf worker results and validate PDF splits. Extract mode resolves
+ * page ranges here; chunk mode uses qpdf's `--split-pages=N` and output names.
  */
 
 import {
@@ -39,28 +25,16 @@ export {
   stripProgramPrefix,
 };
 
-/** Scratch paths inside the worker's Emscripten filesystem. */
 export const SPLIT_INPUT_PATH = "in.pdf";
 export const SPLIT_OUTPUT_PATH = "out.pdf";
 
 /**
- * Stem qpdf builds its chunk filenames from.
- *
- * Reader filenames never reach argv — the merge tool learned this the hard
- * way: a file called `--encrypt` or `1-5` would otherwise be read as an option
- * or a page range. qpdf writes `out-01-02.pdf`, and `chunkFileName` maps that
- * back onto the reader's own filename for display and download.
+ * Use a fixed stem so filenames such as `--encrypt` never reach qpdf argv.
+ * Map qpdf's chunk names back to the reader's filename for downloads.
  */
 export const SPLIT_OUTPUT_STEM = "out";
 
-/**
- * Most chunks one run will produce.
- *
- * A 1,000-page document split one page at a time is 1,000 files, each its own
- * blob URL and list row. The cap is about the browser, not qpdf: that many
- * live object URLs is a memory leak waiting to happen and a list nobody can
- * use. Past it the tool asks for a larger chunk size instead of trying.
- */
+/** Limit browser memory and UI rows, not qpdf's splitting ability. */
 export const MAX_SPLIT_OUTPUTS = 200;
 
 /** Largest chunk size worth offering; beyond this, extract is the better tool. */
@@ -86,11 +60,10 @@ export interface PdfSplitFailure {
   ok: false;
   code: PdfSplitErrorCode;
   message: string;
-  /** Raw qpdf output, useful for the details panel. */
+  /** Sanitized qpdf output for the details panel. */
   detail: string;
 }
 
-/** One produced document, named as the reader would expect to see it. */
 export interface PdfSplitPiece {
   name: string;
   bytes: Uint8Array;
@@ -114,20 +87,13 @@ export interface PdfSplitWorkerRequest {
   args?: string[];
 }
 
-/** A file the worker found in MEMFS after the run. */
 export interface PdfSplitWorkerFile {
   /** qpdf's own name, e.g. "out-01-02.pdf". */
   name: string;
   bytes: ArrayBuffer;
 }
 
-/**
- * Message posted back by the worker.
- *
- * As with the other PDF tools the worker is a thin runner: it reports which
- * qpdf pass it reached, that pass's exit code and the raw console output.
- * Interpretation happens on the main thread via `interpretWorkerResponse`.
- */
+/** Raw worker report; `interpretWorkerResponse` classifies it on the main thread. */
 export interface PdfSplitWorkerResponse {
   stage: "startup" | "inspect" | "count" | "split";
   exitCode: number;

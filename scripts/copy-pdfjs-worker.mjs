@@ -1,20 +1,6 @@
-// Copies the pdf.js worker out of node_modules and into `public/pdfjs/`.
-//
-// The split tool renders page thumbnails with pdf.js, which does its parsing
-// and rasterising in a worker of its own. That worker has to be served from
-// this origin — `script-src 'self'` allows nothing else — and pdf.js loads it
-// by URL rather than through the bundler, so it has to exist as a static file.
-//
-// `public/pdfjs/` rather than `public/pdf/` on purpose. The `/pdf/` directory
-// carries a relaxed Content-Security-Policy so the qpdf engine can instantiate
-// WebAssembly; pdf.js 6 needs no WebAssembly for ordinary rendering and no
-// `eval` at all, so it has no business inheriting that relaxation. Kept one
-// directory over, it is served under the strict policy like everything else.
-// The header rule in next.config.ts excludes `pdf/` specifically, and
-// `pdfjs/` does not match it.
-//
-// Run explicitly from `dev` and `build` alongside copy-qpdf-wasm.mjs, because
-// pnpm does not execute pre/post scripts by default.
+// pdf.js loads its worker by URL. Serve it from /pdfjs/ so it stays same-origin
+// without inheriting the relaxed /pdf/ CSP used by qpdf. dev and build invoke
+// this script explicitly because pnpm does not run pre/post scripts by default.
 
 import { copyFileSync, mkdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -24,9 +10,7 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const projectRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-// Resolved through the package rather than by path, so a layout change in
-// pdfjs-dist fails here with a clear message instead of silently shipping
-// nothing and breaking the preview at runtime.
+// Resolve through the package so layout changes fail during the copy step.
 const packageJsonPath = require.resolve("pdfjs-dist/package.json");
 const source = join(dirname(packageJsonPath), "build", "pdf.worker.min.mjs");
 

@@ -1,4 +1,3 @@
-// Shared byte-level primitives used across encoding, hashing, and crypto tools.
 export type ByteTextEncoding = "utf8" | "latin1" | "hex";
 
 export function bytesToHex(bytes: Uint8Array, uppercase = false): string {
@@ -61,8 +60,7 @@ export function bytesToText(
   return Array.from(bytes, (b) => String.fromCodePoint(b)).join("");
 }
 
-// btoa() can't handle large byte arrays in a single call, so we chunk
-// the input into 8KB slices of Latin-1 characters before encoding.
+// btoa() cannot handle large byte arrays, so encode in 8 KB chunks.
 export function bytesToBase64(bytes: Uint8Array): string {
   const chunkSize = 8192;
   const parts: string[] = [];

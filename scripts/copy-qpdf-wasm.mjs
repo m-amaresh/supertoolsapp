@@ -1,17 +1,7 @@
-// Copies the qpdf engine out of node_modules and into `public/pdf/`, next to
-// the hand-written `qpdf-worker.js` that drives it.
-//
-// Serving these as static assets rather than bundling them is deliberate:
-//   - A dedicated worker inherits its CSP from the response headers of its own
-//     script URL. Pinning the worker to `/pdf/` lets the 'wasm-unsafe-eval'
-//     relaxation it needs be scoped to that one path (see next.config.ts).
-//   - The Emscripten glue has an unreachable Node.js branch referencing `fs`
-//     and `path`, which the browser bundler would otherwise have to stub.
-//   - Both files are same-origin, so `connect-src 'self'` stays intact and the
-//     tool works with no network access at all.
-//
-// Run explicitly from `dev` and `build` rather than as a `prebuild` hook,
-// because pnpm does not execute pre/post scripts by default.
+// Serve qpdf as a same-origin static asset: its worker needs a path-scoped
+// 'wasm-unsafe-eval' CSP, and bundling its Emscripten glue would require Node
+// built-in stubs. dev and build invoke this script explicitly because pnpm
+// does not run pre/post scripts by default.
 
 import { copyFileSync, mkdirSync, statSync } from "node:fs";
 import { createRequire } from "node:module";

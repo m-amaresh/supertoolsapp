@@ -15,7 +15,7 @@ The rough product goals are:
 
 ## Current Tool Count
 
-30 public tools
+32 public tools
 
 ## Routes by Category
 

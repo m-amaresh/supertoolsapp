@@ -46,7 +46,6 @@ export function convertBase(
   const trimmed = input.trim();
   if (!trimmed) return empty;
 
-  // Strip common prefixes
   let cleaned = trimmed;
   if (fromBase === "hex") {
     cleaned = cleaned.replace(/^(-?)0x/i, "$1");

@@ -1,45 +1,16 @@
-/**
- * Primitives shared by every tool that drives the WebAssembly build of qpdf.
- *
- * Both PDF tools run the same engine in the same kind of thin worker, so they
- * read PDF headers, size limits, exit codes and console output identically.
- * Keeping that in one place is what stops the two tools drifting into two
- * conventions for the same qpdf behaviour — the tool-specific parts (what an
- * error *means* to the reader) stay in `pdf-unlock.ts` and `pdf-merge.ts`.
- *
- * Everything here is framework- and DOM-independent so it can be unit tested
- * directly.
- */
+/** Shared qpdf limits, exit-code handling, and output sanitization. */
 
-/**
- * Largest single PDF we accept.
- *
- * Emscripten's MEMFS keeps file contents on the **JS heap**, not in WASM linear
- * memory — measured, the WASM heap stays at 16 MB while the tab grows by the
- * size of the files. So the cost of a file is paid in ordinary tab memory, and
- * it is paid more than once: the transferred bytes and the MEMFS copy coexist
- * until the worker drops its reference.
- */
+/** Transferred bytes and MEMFS copies coexist on the JS heap until released. */
 export const MAX_PDF_BYTES = 100 * 1024 * 1024;
 
 const PDF_HEADER = "%PDF-";
 
-/**
- * qpdf exits 0 on success and 3 when the operation succeeded but printed
- * warnings — a cross-reference table it had to repair, say. Both leave usable
- * output, so only anything else is a real failure. The workers in `public/pdf/`
- * mirror this to decide whether to continue past a pass.
- */
+/** qpdf exit 3 means success with warnings; workers mirror this rule. */
 export function isQpdfSuccess(exitCode: number): boolean {
   return exitCode === 0 || exitCode === 3;
 }
 
-/**
- * `qpdf --show-encryption` prints the document's own user password when the
- * owner password is the one supplied. Nothing here needs it, and it would
- * otherwise sit in the details panel in plain text, so scrub it before any raw
- * output is kept for display.
- */
+/** Scrub passwords that `qpdf --show-encryption` may print into the details panel. */
 export function redactQpdfSecrets(output: string): string {
   return output.replace(
     /^([^\n]*?\b(?:user password|encryption key)\s*=\s*).*$/gim,
@@ -55,28 +26,12 @@ export function stripProgramPrefix(line: string): string {
   return line.replace(/^[^\s:]*:\s*/, "").trim();
 }
 
-/**
- * Matches an `/Encrypt` entry pointing at the encryption dictionary.
- *
- * The indirect reference is the whole point of the pattern. A bare `/Encrypt`
- * appears in plenty of innocent places — an uncompressed content stream, a
- * bookmark title, an embedded file name — but `/Encrypt 12 0 R` is the trailer
- * form and is not something a document says by accident.
- */
+/** Match a trailer's indirect `/Encrypt N N R` reference, not a bare text occurrence. */
 const TRAILER_ENCRYPT = /\/Encrypt\s+\d+\s+\d+\s+R/;
 
 /**
- * True when a chunk of a PDF declares encryption.
- *
- * Deliberately works on a *chunk* rather than a whole document, so a caller
- * can slice the head and tail of a large file and answer the question without
- * reading it all — the trailer lives at the end, and a linearized file repeats
- * one at the front.
- *
- * This is a fast path, not the authority. qpdf decides for real when the file
- * reaches the engine; this exists so a protected document can be refused the
- * instant it is chosen, instead of after a renderer has been downloaded and a
- * page range typed.
+ * Fast encryption hint for head/tail chunks; qpdf makes the final decision.
+ * The trailer is at the end, or also at the front for linearized PDFs.
  */
 export function declaresEncryption(bytes: Uint8Array): boolean {
   // latin1 is byte-preserving, and TextDecoder handles a chunk of any size —

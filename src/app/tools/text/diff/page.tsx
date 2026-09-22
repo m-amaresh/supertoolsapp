@@ -46,7 +46,6 @@ const DIFF_RENDER_LIMIT = 500;
 export default function TextDiff() {
   const { readText, pasteError } = useClipboard();
 
-  // This tool keeps its own state because it compares two inputs and returns structured diff data.
   const [left, setLeft] = useState("");
   const [right, setRight] = useState("");
   const [announcement, announce] = useAnnouncer();

@@ -45,16 +45,13 @@ function capitalize(word: string): string {
 }
 
 export function convertCase(input: string, targetCase: CaseType): string {
-  // For simple upper/lower, apply directly to the full text
   if (targetCase === "upper") return input.toUpperCase();
   if (targetCase === "lower") return input.toLowerCase();
 
-  // For title case, capitalize each word preserving original separators
   if (targetCase === "title") {
     return input.replace(/\S+/g, (word) => capitalize(word));
   }
 
-  // For identifier-style cases, split into words first
   const words = splitIntoWords(input);
   if (words.length === 0) return input;
 

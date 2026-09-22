@@ -1,16 +1,4 @@
-/**
- * Types and pure helpers for the PDF password protection tool.
- *
- * The encryption itself runs in a Web Worker (`public/pdf/qpdf-encrypt-worker.js`)
- * driving a WebAssembly build of qpdf. Everything in this file is framework-
- * and DOM-independent so it can be unit tested directly.
- *
- * This is the inverse of `pdf-unlock.ts`: that tool takes a password off a
- * document, this one puts a password on. The two share `qpdf.ts` for
- * everything that is really "how qpdf behaves" rather than "what this tool
- * means", which is what stops them drifting into two conventions for the same
- * engine.
- */
+/** Interpret qpdf worker results and validate requests for PDF protection. */
 
 import {
   extractWarnings,
@@ -22,8 +10,7 @@ import {
   stripProgramPrefix,
 } from "./qpdf";
 
-// Re-exported so this module stays the single import for the encrypt tool and
-// its tests. The implementations are shared with the other PDF tools.
+// Keep shared qpdf helpers available through the tool module.
 export {
   extractWarnings,
   formatBytes,
@@ -34,35 +21,20 @@ export {
   stripProgramPrefix,
 };
 
-/** Passwords longer than this are rejected before reaching the worker. */
 export const MAX_PASSWORD_LENGTH = 2048;
 
 /**
- * How much of the password the PDF format actually hashes.
- *
- * These are limits of the file format, not of this tool. AES-256 (revision 6)
- * runs the first 127 **bytes** of the UTF-8 password through its hash and
- * ignores the rest. The older 128-bit handler (revision 4) is worse: it pads
- * or truncates to exactly 32 bytes, and encodes them as PDFDocEncoding, so
- * characters outside Latin-1 are mangled rather than merely dropped.
- *
- * A reader given the full password still opens the file — it truncates
- * identically — so this is not a correctness bug. It is a false sense of
- * strength, which is worth saying out loud when a passphrase exceeds it.
+ * PDF password byte limits: AES-256 uses at most 127 UTF-8 bytes; AES-128
+ * truncates to 32 PDFDocEncoding bytes. The full password still opens the file,
+ * but extra characters add no strength and non-Latin-1 characters can change.
  */
 export const AES256_PASSWORD_BYTES = 127;
 export const AES128_PASSWORD_BYTES = 32;
 
-/**
- * Cipher to protect the document with.
- *
- * 40-bit RC4 is deliberately not offered. qpdf can still write it, but it is
- * broken rather than merely dated, and a tool that presents it as a choice
- * invites someone to pick it.
- */
+/** 40-bit RC4 is excluded because it is broken. */
 export type PdfEncryptionStrength = "aes256" | "aes128";
 
-/** What the recipient may do with the document once they have opened it. */
+/** Permissions granted to readers who do not have the owner password. */
 export interface PdfEncryptPermissions {
   /** Print at full resolution. */
   print: boolean;
@@ -90,7 +62,7 @@ export interface PdfEncryptOptions {
   permissions: PdfEncryptPermissions;
 }
 
-/** Everything allowed — the default, since a password alone is the usual ask. */
+/** A password alone does not restrict printing, copying, or editing. */
 export const DEFAULT_PERMISSIONS: PdfEncryptPermissions = {
   print: true,
   copy: true,
@@ -112,7 +84,6 @@ export type PdfEncryptErrorCode =
 
 export interface PdfEncryptSuccess {
   ok: true;
-  /** Encrypted PDF bytes, carrying an /Encrypt dictionary. */
   bytes: Uint8Array;
   /** Non-fatal qpdf warnings, if any (e.g. a repaired cross-reference table). */
   warnings: string[];
@@ -122,7 +93,7 @@ export interface PdfEncryptFailure {
   ok: false;
   code: PdfEncryptErrorCode;
   message: string;
-  /** Raw qpdf output, useful for the details panel. */
+  /** Sanitized qpdf output for the details panel. */
   detail: string;
 }
 
@@ -135,19 +106,9 @@ export interface PdfEncryptWorkerRequest {
   args: string[];
 }
 
-/**
- * Message posted back by the worker.
- *
- * As with the unlock tool, the worker is a thin runner: it reports which qpdf
- * pass it reached, that pass's exit code and the raw console output. All
- * interpretation happens here on the main thread via `interpretWorkerResponse`,
- * which keeps the decision-making in this tested module rather than in the
- * untyped worker.
- */
+/** Raw worker report; `interpretWorkerResponse` classifies it on the main thread. */
 export interface PdfEncryptWorkerResponse {
-  /** Which stage the worker reached before reporting back. */
   stage: "startup" | "inspect" | "encrypt";
-  /** Exit code of the qpdf invocation for that stage. */
   exitCode: number;
   /** Combined stdout/stderr captured from qpdf. */
   output: string;

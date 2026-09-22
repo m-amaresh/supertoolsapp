@@ -144,8 +144,7 @@ export default function UrlParserBuilder() {
     [nextId],
   );
 
-  // Parse as you type, like the rest of the toolkit. Debounced so a half-typed
-  // URL does not raise an error on every keystroke.
+  // Debounce incomplete URLs to avoid errors on every keystroke.
   const parseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!input.trim()) {

@@ -24,7 +24,6 @@ export default function TwitterImage() {
         padding: "0 72px",
       }}
     >
-      {/* Icon block */}
       <div
         style={{
           display: "flex",
@@ -51,7 +50,6 @@ export default function TwitterImage() {
         </svg>
       </div>
 
-      {/* Text block */}
       <div
         style={{
           display: "flex",

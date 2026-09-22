@@ -87,8 +87,6 @@ export default function UuidGenerator() {
     parsedCustomCount,
   ]);
 
-  // Gated on exactly what disables the button, so the shortcut can never
-  // run an action the UI presents as unavailable.
   useRunShortcut(generate, !countError);
 
   const clear = useCallback(() => {

@@ -80,7 +80,6 @@ export default function AesGcmTool() {
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [downloadName, setDownloadName] = useState("decrypted.bin");
 
-  // Revoke blob URLs on unmount or when a new one is created to prevent memory leaks.
   useEffect(() => {
     return () => {
       if (downloadUrl) {
@@ -182,7 +181,7 @@ export default function AesGcmTool() {
             merged.set(chunk, offset);
             offset += chunk.byteLength;
           }
-          // Release chunk references as soon as merge completes.
+          // Release chunk references once the merged buffer owns the bytes.
           chunks.length = 0;
 
           setFileBytes(merged);
@@ -236,9 +235,6 @@ export default function AesGcmTool() {
     setIsProcessing(true);
 
     try {
-      // Encrypt path: convert text/file to bytes, encrypt, then armor as
-      // a portable string. Decrypt path: parse armored payload, decrypt,
-      // then either render text or offer a file download based on metadata.
       if (mode === "encrypt") {
         const plaintextBytes =
           sourceMode === "file" ? fileBytes : textToBytes(input, textEncoding);

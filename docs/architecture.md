@@ -74,7 +74,7 @@ This consistency is deliberate. Users should not have to relearn the UI for ever
 
 The scaffold gives every tool the same slots — toolbar, options bar, status stack, body. That is not enough on its own: the same slot came to mean different things on different pages, so learning one tool did not transfer to the next. These six rules fix the meaning of each slot.
 
-They were chosen off the back of a UI/UX audit of all 29 tool pages, which found the same visual slot meaning different things on different pages. This section is the decision rather than the argument: when adding or changing a tool, follow it here.
+They were chosen after a UI/UX audit of the tool pages, which found the same visual slot meaning different things on different pages. This section is the decision rather than the argument: when adding or changing a tool, follow it here.
 
 Each rule notes where the codebase does not yet conform. Those lists are the remaining remediation work, not permission to add more.
 
@@ -133,7 +133,7 @@ The full convention is already correct in `base64`, `base32`, `hex` and `url`. E
 
 A mutually-exclusive choice is always a `SegmentedControl`, never two buttons — it gets `role="radio"` semantics and arrow-key navigation for free. Putting a mode toggle beside the action it modifies also produces the same word twice in one row, once as a setting and once as an action, distinguishable only by button styling.
 
-*Conforming.* Every mode, direction and view toggle now sits in the options bar. With Phase 0's `flex-wrap` disabled, all 30 toolbars still fit a 375px card unaided — the wrapping is now insurance rather than the thing holding the layout together.
+*Conforming.* Every mode, direction and view toggle now sits in the options bar. The layout tests check that toolbars fit a 375px card; `flex-wrap` remains as insurance rather than the thing holding the layout together.
 
 ### Accessibility invariants
 

@@ -54,10 +54,7 @@ function buildMergeArgs(count) {
   return [scratchName(0), "--decrypt", "--pages", ...files, "--", OUTPUT_PATH];
 }
 
-// The qpdf build binds console.log/console.error by value when its factory
-// runs, so its output cannot be redirected through Module options. Patch the
-// worker's own console up front and collect the lines instead. This worker
-// exists only to run qpdf, so nothing else is affected.
+// qpdf captures console methods at factory startup; patch them first to collect output.
 let captured = [];
 console.log = (...args) => {
   captured.push(args.map(String).join(" "));
@@ -72,10 +69,7 @@ function drainOutput() {
   return text;
 }
 
-// qpdf exits 0 on success and 3 when it succeeded but printed warnings, such
-// as a cross-reference table it had to repair. A file that warns still merges
-// perfectly well, so both codes continue. Mirrors `isQpdfSuccess` in
-// src/lib/qpdf.ts, which classifies the codes for the UI.
+// Exit 3 means success with warnings; keep this in sync with isQpdfSuccess.
 function succeeded(exitCode) {
   return exitCode === 0 || exitCode === 3;
 }
@@ -93,8 +87,7 @@ function post(stage, exitCode, output, pageCount, encryptedIndexes, bytes) {
 }
 
 self.onmessage = async (event) => {
-  // Dedicated workers only receive messages from their creator, so `origin` is
-  // the empty string. Reject anything else as defense in depth.
+  // Dedicated worker messages have an empty origin.
   if (event.origin !== "" && event.origin !== self.location.origin) {
     return;
   }
@@ -164,7 +157,7 @@ self.onmessage = async (event) => {
       try {
         qpdf.FS.unlink(scratchName(index));
       } catch {
-        // Already gone, or the build exposes no unlink. Not worth failing for.
+        // Ignore failed cleanup; qpdf has already produced the result.
       }
     }
 

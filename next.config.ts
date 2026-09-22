@@ -8,14 +8,7 @@ import {
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// Google Analytics is the only thing the site loads from another origin, and
-// gtag.js cannot be self-hosted. The relaxation is therefore conditional: a
-// build with no measurement ID — local development, or anyone running their
-// own copy — keeps script-src naming nothing but 'self'.
-//
-// The consent banner does not appear here on purpose. It is vendored into
-// public/consent/ precisely so that adding a cookie banner did not also mean
-// trusting a CDN with script execution on every page.
+// Only configured GA builds allow third-party hosts; the consent banner is self-hosted.
 const withAnalytics = isAnalyticsConfigured();
 const gaScript = withAnalytics ? ` ${GA_SCRIPT_HOSTS.join(" ")}` : "";
 const gaConnect = withAnalytics ? ` ${GA_CONNECT_HOSTS.join(" ")}` : "";
@@ -27,18 +20,8 @@ const gaImg = withAnalytics ? ` ${GA_IMG_HOSTS.join(" ")}` : "";
 const vercelInsightsScript = "https://va.vercel-scripts.com";
 const vercelInsightsEvents = "https://vitals.vercel-insights.com";
 
-// The PDF unlock tool decrypts files with a WebAssembly build of qpdf, and
-// instantiating WebAssembly requires 'wasm-unsafe-eval' in script-src.
-//
-// A dedicated worker takes its CSP from the response headers of its own script
-// URL rather than from the page that spawned it, so the relaxation belongs on
-// the worker's path — not on any page. The worker is served from `/pdf/`, which
-// confines 'wasm-unsafe-eval' to that single directory: every page in the app,
-// including the PDF tool itself, keeps the strict policy, and no other worker
-// gains the capability.
-//
-// The engine is served same-origin from `public/pdf/`, so `connect-src 'self'`
-// is unchanged and no cross-origin request is involved.
+// Workers use the CSP of their own script response. Scope qpdf's required
+// 'wasm-unsafe-eval' to /pdf/ so pages and other workers keep the strict policy.
 function buildCsp({ allowWasm }: { allowWasm: boolean }): string {
   const scriptSrc = [
     "script-src 'self' 'unsafe-inline'",
@@ -111,10 +94,8 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   async headers() {
     return [
-      // The `/pdf/` rule must come first, and the general rule must exclude
-      // that path: when two matching rules both set Content-Security-Policy the
-      // browser receives two headers and enforces their intersection, which
-      // would strip 'wasm-unsafe-eval' straight back out.
+      // Avoid overlapping CSP headers: browsers enforce their intersection,
+      // which would remove the /pdf/ worker's 'wasm-unsafe-eval' permission.
       {
         source: "/pdf/:path*",
         headers: wasmWorkerSecurityHeaders,

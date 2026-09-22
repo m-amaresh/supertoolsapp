@@ -142,8 +142,6 @@ export default function PasswordGenerator() {
     !options.includeNumbers &&
     !options.includeSymbols;
 
-  // Gated on exactly what disables the button, so the shortcut can never
-  // run an action the UI presents as unavailable.
   useRunShortcut(generate, !countError && !hasNoCharset);
 
   const clear = useCallback(() => {

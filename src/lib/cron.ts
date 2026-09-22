@@ -125,7 +125,6 @@ function describeField(
 function buildDescription(fields: CronFields): string {
   const parts: string[] = [];
 
-  // Time
   if (fields.minute === "*" && fields.hour === "*") {
     parts.push("Every minute");
   } else if (fields.minute.match(/^\*\/\d+$/) && fields.hour === "*") {
@@ -157,19 +156,16 @@ function buildDescription(fields: CronFields): string {
     );
   }
 
-  // Day of month
   if (fields.dayOfMonth !== "*") {
     parts.push(
       `on day ${describeField(fields.dayOfMonth, null, "day")} of the month`,
     );
   }
 
-  // Month
   if (fields.month !== "*") {
     parts.push(`in ${describeField(fields.month, MONTH_NAMES, "month")}`);
   }
 
-  // Day of week
   if (fields.dayOfWeek !== "*") {
     parts.push(
       `on ${describeField(fields.dayOfWeek, DAY_NAMES, "day", normalizeDayOfWeek)}`,
@@ -276,7 +272,6 @@ export function parseCron(expression: string): CronResult {
     dayOfWeek: parts[4],
   };
 
-  // Validate each field can be parsed
   if (!parseField(fields.minute, 0, 59)) {
     return {
       description: "",

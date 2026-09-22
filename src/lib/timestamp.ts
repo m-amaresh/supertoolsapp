@@ -23,7 +23,6 @@ export function parseTimestamp(input: string): Date | null {
     return new Date(num * 1000);
   }
 
-  // Try ISO 8601 (reliable cross-browser)
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
     const date = new Date(trimmed);
     if (!Number.isNaN(date.getTime())) {
@@ -31,7 +30,6 @@ export function parseTimestamp(input: string): Date | null {
     }
   }
 
-  // Try RFC 2822 / month-name formats (cross-browser safe)
   if (/^[A-Za-z]/.test(trimmed) && /\d{4}/.test(trimmed)) {
     const date = new Date(trimmed);
     if (!Number.isNaN(date.getTime())) {
@@ -45,7 +43,6 @@ export function parseTimestamp(input: string): Date | null {
     return null;
   }
 
-  // Try other standard formats via Date constructor
   const date = new Date(trimmed);
   if (!Number.isNaN(date.getTime())) {
     return date;

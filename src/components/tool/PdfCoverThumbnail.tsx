@@ -53,9 +53,7 @@ export function PdfCoverThumbnail({
 }: PdfCoverThumbnailProps) {
   const { status, pageCount, documentRef } = usePdfDocument(file);
 
-  // Reported through an effect rather than the hook's own callback so the
-  // caller may pass a freshly-built function without reopening the document
-  // on every render of the list.
+  // Report through an effect so a changing callback does not reopen the PDF.
   const onPageCountRef = useRef(onPageCount);
   useEffect(() => {
     onPageCountRef.current = onPageCount;
@@ -72,8 +70,7 @@ export function PdfCoverThumbnail({
   );
   const size = { width, height: Math.round(width * 1.3) };
 
-  // An empty frame of the same size while loading, or when the page will not
-  // draw, so a row never changes height under the reorder buttons.
+  // Keep row height stable while the cover loads or fails.
   if (status !== "ready") {
     return <div className={frame} style={size} aria-hidden="true" />;
   }

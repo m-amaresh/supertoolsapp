@@ -47,10 +47,8 @@ import {
   validateSelection,
 } from "@/lib/pdf-merge";
 
-/** Static path, not a bundled chunk — see the comment in `handleMerge`. */
 const WORKER_URL = "/pdf/qpdf-merge-worker.js";
 
-/** Cover width on a card. Wide enough to recognise a document, not to read it. */
 const COVER_CARD_WIDTH = 110;
 
 /**
@@ -78,13 +76,8 @@ interface MergedResult {
 export default function PdfMergeTool() {
   const [files, setFiles] = useState<QueuedFile[]>([]);
   /**
-   * Pages per queued file, reported by its cover thumbnail.
-   *
-   * Keyed by the queue id rather than the filename, for the same reason the
-   * rows are: the same document can be added twice, and rows move. A file
-   * whose cover will not render is simply absent, and its row shows the size
-   * alone — pdf.js failing to read something qpdf can merge is not worth
-   * turning into an error.
+   * Keyed by queue id because names can repeat and rows can move. A failed
+   * cover preview leaves its page count absent without blocking the merge.
    */
   const [pageCounts, setPageCounts] = useState<Record<string, number>>({});
   const [isWorking, setIsWorking] = useState(false);
@@ -93,11 +86,7 @@ export default function PdfMergeTool() {
   const [errorDetail, setErrorDetail] = useState("");
   const [result, setResult] = useState<MergedResult | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  /**
-   * Files left out because the list was already full. Held in visible state,
-   * not just announced: a sighted reader was otherwise able to download an
-   * incomplete merge with nothing on screen saying a document was dropped.
-   */
+  /** Shown persistently so skipped files cannot go unnoticed. */
   const [skippedFiles, setSkippedFiles] = useState<string[]>([]);
   /** Queue id of the document open in the reader, or null when it is closed. */
   const [viewerId, setViewerId] = useState<string | null>(null);
@@ -110,16 +99,9 @@ export default function PdfMergeTool() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultUrlRef = useRef<string | null>(null);
   const nextIdRef = useRef(0);
-  /**
-   * Identifies the in-flight attempt. Adding, removing, reordering, clearing,
-   * starting again and unmounting all bump it; anything asynchronous compares
-   * against it before publishing, so a stale worker response can no longer
-   * overwrite the current list or reappear after a Clear.
-   */
+  /** Invalidates asynchronous results after any list change or unmount. */
   const attemptRef = useRef(0);
 
-  // Tear down the worker and revoke the blob URL when leaving the page, so no
-  // merged bytes outlive the tab.
   useEffect(() => {
     return () => {
       attemptRef.current += 1;
@@ -132,15 +114,7 @@ export default function PdfMergeTool() {
     };
   }, []);
 
-  /**
-   * Abandons whatever is in flight.
-   *
-   * Bumping the counter alone is not enough: the abandoned attempt returns
-   * early from its callbacks, so nothing would ever clear `isWorking` and the
-   * tool would sit on "Merging…" forever with the button disabled. The
-   * abandoning action owns the reset, because at that moment there is no
-   * successor attempt to do it — a new run sets `isWorking` itself.
-   */
+  /** Clear working state here; ignored callbacks cannot reset it later. */
   const abandonAttempt = useCallback(() => {
     attemptRef.current += 1;
     workerRef.current?.terminate();
@@ -157,7 +131,6 @@ export default function PdfMergeTool() {
     setResult(null);
   }, [abandonAttempt]);
 
-  /** Any edit to the list invalidates the result that was built from it. */
   const editList = useCallback(
     (update: (current: QueuedFile[]) => QueuedFile[]) => {
       setError(null);
@@ -165,21 +138,14 @@ export default function PdfMergeTool() {
       setErrorDetail("");
       setSkippedFiles([]);
       clearResult();
-      // The reader is modal, so no edit can happen while it is open; this only
-      // stops a stale id pointing at a document that has since been removed.
+      // Prevent a stale viewer id after a list edit.
       setViewerId(null);
       setFiles(update);
     },
     [clearResult],
   );
 
-  /**
-   * Which rows may open their document for a cover.
-   *
-   * Opening one reads the whole file into memory, so the merger's own size
-   * ceilings gate it: without this an oversized document was loaded the
-   * instant it joined the list, and only refused later when Merge was pressed.
-   */
+  /** Apply merge size limits before a cover reads the entire file. */
   const previewable = useMemo(
     () => previewableFiles(files.map((queued) => queued.file.size)),
     [files],
@@ -190,8 +156,7 @@ export default function PdfMergeTool() {
       const added = Array.from(incoming ?? []);
       if (added.length === 0) return;
 
-      // Take only what fits, and say so. Silently dropping the overflow would
-      // leave the reader believing a document is in the merge when it is not.
+      // Keep overflow visible so the user knows which files were omitted.
       const room = Math.max(MAX_MERGE_FILES - files.length, 0);
       const accepted = added.slice(0, room);
       const skipped = added.length - accepted.length;
@@ -209,7 +174,6 @@ export default function PdfMergeTool() {
         ...current,
         ...accepted.map((file) => ({ id: `f${nextIdRef.current++}`, file })),
       ]);
-      // After editList, which clears it along with the error.
       setSkippedFiles(added.slice(accepted.length).map((file) => file.name));
       announce(
         `${accepted.length} file${accepted.length === 1 ? "" : "s"} added to the merge list.${
@@ -222,13 +186,7 @@ export default function PdfMergeTool() {
     [announce, editList, files.length],
   );
 
-  /**
-   * Opens the native file picker.
-   *
-   * The visible control has to be a real `<button>`: a `<label>` is not
-   * focusable, and the input it points at is `display: none`, so neither was
-   * reachable by Tab — the whole workflow was unusable from the keyboard.
-   */
+  /** The visible button opens the hidden input so keyboard users can reach it. */
   const openFilePicker = useCallback(() => {
     fileInputRef.current?.click();
   }, []);
@@ -305,8 +263,7 @@ export default function PdfMergeTool() {
       announce(`Merge failed. ${message}`);
     };
 
-    // Everything knowable without reading the files is checked first, so an
-    // oversized selection is refused before it is allocated in page memory.
+    // Reject oversized selections before allocating file bytes.
     const invalid = validateSelection(
       queued.map((item) => ({ name: item.file.name, size: item.file.size })),
     );
@@ -320,14 +277,12 @@ export default function PdfMergeTool() {
     announce(`Merging ${queued.length} PDFs, please wait.`);
 
     try {
-      // Read one at a time rather than all at once: peak page memory stays at
-      // one file above the buffers already collected.
+      // Read serially to limit peak page memory.
       const buffers: ArrayBuffer[] = [];
       for (const item of queued) {
         const bytes = new Uint8Array(await item.file.arrayBuffer());
 
-        // Reading is async; the list may have changed, or the page may have
-        // unmounted, while it was pending.
+        // Ignore a read completed after a list change or unmount.
         if (attempt !== attemptRef.current) return;
 
         const badFile = validateBytes(bytes, item.file.name);
@@ -338,12 +293,10 @@ export default function PdfMergeTool() {
         buffers.push(bytes.buffer as ArrayBuffer);
       }
 
-      // A fresh worker per attempt: it starts with clean WASM memory and is
-      // terminated as soon as it answers, which discards the file bytes.
-      // Served from /pdf/ rather than bundled so the CSP relaxation that
-      // WebAssembly needs stays confined to that path — see next.config.ts.
+      // A fresh worker drops its WASM memory after each run. Its /pdf/ URL
+      // confines the required CSP relaxation to that path.
       workerRef.current?.terminate();
-      // Classic worker: the qpdf glue is a UMD bundle loaded via importScripts.
+      // qpdf's UMD bundle requires a classic worker.
       const worker = new Worker(WORKER_URL);
       workerRef.current = worker;
 
@@ -362,8 +315,7 @@ export default function PdfMergeTool() {
           return;
         }
 
-        // `bytes` wraps the whole transferred buffer, so passing `.buffer`
-        // straight through is safe and avoids a second copy.
+        // The result occupies the whole transferred buffer; no copy is needed.
         const blob = new Blob([outcome.bytes.buffer as ArrayBuffer], {
           type: "application/pdf",
         });
@@ -399,7 +351,6 @@ export default function PdfMergeTool() {
         );
       };
 
-      // Transfer the buffers so the bytes are moved, not copied.
       worker.postMessage({ buffers }, buffers);
     } catch (e) {
       if (attempt !== attemptRef.current) return;

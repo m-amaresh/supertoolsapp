@@ -1,13 +1,7 @@
 /**
- * Types and pure helpers for the PDF unlock tool.
- *
- * The actual decryption runs in a Web Worker (`qpdf.worker.ts`) driving a
- * WebAssembly build of qpdf. Everything in this file is framework- and
- * DOM-independent so it can be unit tested directly.
- *
- * "Unlocking" here means removing the encryption from a PDF you can already
- * open — you supply the password, qpdf decrypts every string and stream and
- * writes a plain PDF. It is not a password recovery or cracking tool.
+ * Interpret qpdf worker results and validate PDF unlock requests. Unlocking
+ * removes encryption from a file the user can already open; it does not recover
+ * passwords.
  */
 
 import {
@@ -20,8 +14,7 @@ import {
   stripProgramPrefix,
 } from "./qpdf";
 
-// Re-exported so this module stays the single import for the unlock tool and
-// its tests. The implementations are shared with the merge tool — see qpdf.ts.
+// Keep shared qpdf helpers available through the tool module.
 export {
   extractWarnings,
   formatBytes,
@@ -47,7 +40,6 @@ export type PdfUnlockErrorCode =
   | "unknown";
 
 export interface PdfUnlockRequest {
-  /** Raw bytes of the encrypted PDF. */
   bytes: Uint8Array;
   /** User or owner password. Empty string means "try with no password". */
   password: string;
@@ -55,7 +47,6 @@ export interface PdfUnlockRequest {
 
 export interface PdfUnlockSuccess {
   ok: true;
-  /** Decrypted PDF bytes, with no /Encrypt dictionary. */
   bytes: Uint8Array;
   /** Non-fatal qpdf warnings, if any (e.g. a repaired cross-reference table). */
   warnings: string[];
@@ -67,7 +58,7 @@ export interface PdfUnlockFailure {
   ok: false;
   code: PdfUnlockErrorCode;
   message: string;
-  /** Raw qpdf output, useful for the details panel. */
+  /** Sanitized qpdf output for the details panel. */
   detail: string;
 }
 
@@ -79,24 +70,14 @@ export interface PdfUnlockWorkerRequest {
   password: string;
 }
 
-/**
- * Message posted back by the worker.
- *
- * The worker is a thin runner: it reports which qpdf pass it reached, that
- * pass's exit code, and the raw console output. All interpretation happens
- * here on the main thread via `interpretWorkerResponse`, which keeps the
- * decision-making in this tested module rather than in the untyped worker.
- */
+/** Raw worker report; `interpretWorkerResponse` classifies it on the main thread. */
 export interface PdfUnlockWorkerResponse {
-  /** Which stage the worker reached before reporting back. */
   stage: "startup" | "inspect" | "decrypt";
-  /** Exit code of the qpdf invocation for that stage. */
   exitCode: number;
-  /** Combined stdout/stderr captured from qpdf. */
   output: string;
   /** Output of the inspect pass, retained so the cipher can be reported. */
   inspectOutput: string;
-  /** Decrypted bytes — present only when `stage` is "decrypt" and it succeeded. */
+  /** Present only after a successful decrypt stage. */
   bytes: ArrayBuffer | null;
 }
 
@@ -304,10 +285,6 @@ export function unlockedFileName(originalName: string): string {
   return `${base}-unlocked.pdf`;
 }
 
-/**
- * Validate a request before spinning up the worker, so obvious problems
- * surface instantly instead of after a 1.3 MB WASM download.
- */
 /**
  * Checks everything knowable *without* reading the file.
  *

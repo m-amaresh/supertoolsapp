@@ -38,9 +38,9 @@ import { PdfPageCanvas } from "./PdfPageCanvas";
 const VIEWER_WIDTH = 900;
 
 interface PdfViewerDialogProps {
-  /** The document to read. Null closes the dialog. */
+  /** Null closes the dialog. */
   file: File | null;
-  /** Page to open at, 1-based. */
+  /** One-based page number. */
   initialPage?: number;
   onClose: () => void;
 }

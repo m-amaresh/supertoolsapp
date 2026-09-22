@@ -116,10 +116,9 @@ async function md5(data: Uint8Array): Promise<Uint8Array> {
     0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
   ];
 
-  // Pre-processing: adding padding bits
   const bitLen = data.length * 8;
   const msgLen = data.length;
-  // Number of bytes after padding (must be 64-byte aligned, with 8 bytes for length)
+  // Leave eight bytes for the original length in the final 64-byte block.
   const padLen =
     (msgLen + 8) % 64 === 0
       ? msgLen + 8
@@ -128,7 +127,6 @@ async function md5(data: Uint8Array): Promise<Uint8Array> {
   padded.set(data);
   padded[msgLen] = 0x80;
 
-  // Append original length in bits as 64-bit little-endian
   const view = new DataView(padded.buffer);
   view.setUint32(padded.length - 8, bitLen & 0xffffffff, true);
   view.setUint32(padded.length - 4, Math.floor(bitLen / 0x100000000), true);
