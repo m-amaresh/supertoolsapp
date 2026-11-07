@@ -87,6 +87,11 @@ describe("pdf-split: page range parsing", () => {
     expect(pagesOf("1-3,x2,5-7,x6", 10)).toEqual([1, 3, 5, 7]);
   });
 
+  it("resolves selections longer than the argument limit", () => {
+    expect(pagesOf("1-z", 150_000)).toHaveLength(150_000);
+    expect(pagesOf("1-z,x2", 150_000)).toHaveLength(149_999);
+  });
+
   it("applies an exclusion to what came before it", () => {
     expect(pagesOf("1-z,x2-3", 5)).toEqual([1, 4, 5]);
   });

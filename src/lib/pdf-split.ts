@@ -186,11 +186,11 @@ export function parsePageRange(
       const drop = new Set(resolved.pages);
       group = group.filter((page) => !drop.has(page));
     } else {
-      selected.push(...group);
+      appendPages(selected, group);
       group = resolved.pages;
     }
   }
-  selected.push(...group);
+  appendPages(selected, group);
 
   if (selected.length === 0) {
     return fail(
@@ -200,6 +200,12 @@ export function parsePageRange(
   }
 
   return { ok: true, pages: selected };
+}
+
+// push(...pages) passes every page as an argument and overflows the call
+// stack on very long documents (1-z on ~150k pages), so append in a loop.
+function appendPages(target: number[], pages: number[]): void {
+  for (const page of pages) target.push(page);
 }
 
 /** Expand one comma-free term into the pages it names. */
