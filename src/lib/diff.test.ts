@@ -37,4 +37,29 @@ describe("diff", () => {
     expect(lines).toHaveLength(1);
     expect(lines[0].type).toBe("equal");
   });
+
+  it("treats CRLF, CR and LF line endings alike", () => {
+    const options = {
+      ignoreWhitespace: false,
+      ignoreCase: false,
+      trimLines: false,
+    };
+    const lines = computeDiff("a\r\nb\r\nc", "a\nb\rc", options);
+    expect(lines.every((line) => line.type === "equal")).toBe(true);
+    expect(lines.map((line) => line.text)).toEqual(["a", "b", "c"]);
+  });
+
+  it("diffs inputs at the line limit", () => {
+    const options = {
+      ignoreWhitespace: false,
+      ignoreCase: false,
+      trimLines: false,
+    };
+    const left = Array.from({ length: 3000 }, (_, i) => `line ${i}`);
+    const right = left.filter((_, i) => i % 3 !== 0);
+    const stats = getDiffStats(
+      computeDiff(left.join("\n"), right.join("\n"), options),
+    );
+    expect(stats).toEqual({ added: 0, removed: 1000, unchanged: 2000 });
+  });
 });

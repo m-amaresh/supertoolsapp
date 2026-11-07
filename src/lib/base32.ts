@@ -64,44 +64,76 @@ export function encodeBase32(
   return encodeBytes(bytes, padding, lowercase);
 }
 
-export function decodeBase32(
-  input: string,
-  options: Base32DecodeOptions = {},
-): string {
-  const { outputEncoding = "utf8" } = options;
-  const normalized = input.replace(/\s+/g, "").toUpperCase();
+// Padding a final quantum of N leftover characters needs (RFC 4648 §6).
+const PADDING_FOR_REMAINDER: Record<number, number> = {
+  0: 0,
+  2: 6,
+  4: 4,
+  5: 3,
+  7: 1,
+};
 
-  if (!/^[A-Z2-7=]*$/.test(normalized)) {
+// Strict RFC 4648 decode: rejects lengths no encoder produces, padding
+// anywhere but the end (or the wrong amount of it), and leftover bits that
+// would otherwise be dropped silently.
+function decodeBytes(input: string): Uint8Array {
+  const normalized = input.replace(/\s+/g, "").toUpperCase();
+  const match = normalized.match(/^([A-Z2-7]*)(=*)$/);
+  if (!match) {
     throw new Error("Invalid Base32 string");
   }
 
-  const withoutPadding = normalized.replace(/=+$/, "");
-  const bytes: number[] = [];
+  const [, body, padding] = match;
+  const expectedPadding = PADDING_FOR_REMAINDER[body.length % 8];
+  if (expectedPadding === undefined) {
+    throw new Error("Invalid Base32 length");
+  }
+  if (padding.length > 0 && padding.length !== expectedPadding) {
+    throw new Error("Invalid Base32 padding");
+  }
 
+  const bytes = new Uint8Array(Math.floor((body.length * 5) / 8));
   let bits = 0;
   let value = 0;
+  let index = 0;
 
-  for (const ch of withoutPadding) {
+  for (const ch of body) {
     const mapped = BASE32_LOOKUP.get(ch);
     if (mapped === undefined) {
       throw new Error("Invalid Base32 string");
     }
 
-    value = (value << 5) | mapped;
+    value = ((value << 5) | mapped) & 0xfff;
     bits += 5;
 
     if (bits >= 8) {
-      bytes.push((value >>> (bits - 8)) & 0xff);
+      bytes[index++] = (value >>> (bits - 8)) & 0xff;
       bits -= 8;
     }
   }
 
-  return sharedBytesToText(new Uint8Array(bytes), outputEncoding);
+  if ((value & ((1 << bits) - 1)) !== 0) {
+    throw new Error("Invalid Base32 string: non-zero trailing bits");
+  }
+
+  return bytes;
+}
+
+export function decodeBase32(
+  input: string,
+  options: Base32DecodeOptions = {},
+): string {
+  const { outputEncoding = "utf8" } = options;
+  return sharedBytesToText(decodeBytes(input), outputEncoding);
 }
 
 export function isValidBase32(input: string): boolean {
-  const normalized = input.replace(/\s+/g, "").toUpperCase();
-  return /^[A-Z2-7=]*$/.test(normalized);
+  try {
+    decodeBytes(input);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function fileToBase32(

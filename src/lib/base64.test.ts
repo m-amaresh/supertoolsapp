@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { decodeBase64, encodeBase64, isValidBase64 } from "./base64";
+import {
+  decodeBase64,
+  encodeBase64,
+  fileToBase64,
+  isValidBase64,
+} from "./base64";
 
 describe("base64", () => {
   it("round-trips utf8 text", () => {
@@ -32,5 +37,10 @@ describe("base64", () => {
   it("validates base64 format", () => {
     expect(isValidBase64("aGVsbG8=")).toBe(true);
     expect(isValidBase64("aGVsbG8*=")).toBe(false);
+  });
+
+  it("encodes files, including empty ones", async () => {
+    await expect(fileToBase64(new Blob([]))).resolves.toBe("");
+    await expect(fileToBase64(new Blob(["hi"]))).resolves.toBe("aGk=");
   });
 });

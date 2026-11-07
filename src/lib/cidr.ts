@@ -62,7 +62,10 @@ function parseIpv6(input: string): bigint | null {
     const v4 = parseIpv4(tail);
     if (v4 === null) return null;
     embeddedV4 = v4;
-    head = trimmed.slice(0, lastColon);
+    // Drop the separator before the IPv4 tail, unless it is the second colon
+    // of a "::" (as in "64:ff9b::192.0.2.1"), which must stay intact.
+    head = trimmed.slice(0, lastColon + 1);
+    if (!head.endsWith("::")) head = head.slice(0, -1);
   }
 
   const doubleColonCount = (head.match(/::/g) ?? []).length;

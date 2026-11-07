@@ -28,22 +28,23 @@ function normalize(line: string, options: DiffOptions): string {
 const MAX_DIFF_LINES = 5000;
 const MAX_LINE_PRODUCT = 10_000_000;
 
-// Build the LCS (longest common subsequence) DP table over pre-normalized lines.
-// Returns the full (m+1)x(n+1) table for traceback.
-function lcs(normA: string[], normB: string[]): number[][] {
+// Build the LCS (longest common subsequence) DP table over pre-normalized
+// lines, as one flat (m+1)x(n+1) array read with `i * (n + 1) + j`. Lengths
+// never exceed MAX_DIFF_LINES, so 16 bits per cell is enough, and a typed array
+// keeps the 10M-cell worst case at ~20 MB instead of nested JS arrays.
+function lcs(normA: string[], normB: string[]): Uint16Array {
   const m = normA.length;
   const n = normB.length;
-  const dp: number[][] = Array.from({ length: m + 1 }, () =>
-    Array(n + 1).fill(0),
-  );
+  const width = n + 1;
+  const dp = new Uint16Array((m + 1) * width);
 
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      if (normA[i - 1] === normB[j - 1]) {
-        dp[i][j] = dp[i - 1][j - 1] + 1;
-      } else {
-        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-      }
+      const cell = i * width + j;
+      dp[cell] =
+        normA[i - 1] === normB[j - 1]
+          ? dp[cell - width - 1] + 1
+          : Math.max(dp[cell - width], dp[cell - 1]);
     }
   }
 
@@ -58,8 +59,9 @@ export function computeDiff(
   right: string,
   options: DiffOptions,
 ): DiffLine[] {
-  const leftLines = left.split("\n");
-  const rightLines = right.split("\n");
+  // Any line ending counts, so a CRLF file and its LF copy compare equal.
+  const leftLines = left.split(/\r\n|\r|\n/);
+  const rightLines = right.split(/\r\n|\r|\n/);
 
   if (
     leftLines.length > MAX_DIFF_LINES ||
@@ -76,6 +78,7 @@ export function computeDiff(
   const normRight = rightLines.map((l) => normalize(l, options));
 
   const dp = lcs(normLeft, normRight);
+  const width = rightLines.length + 1;
 
   const result: DiffLine[] = [];
   let i = leftLines.length;
@@ -93,7 +96,10 @@ export function computeDiff(
       });
       i--;
       j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+    } else if (
+      j > 0 &&
+      (i === 0 || dp[i * width + j - 1] >= dp[(i - 1) * width + j])
+    ) {
       stack.push({ type: "added", text: rightLines[j - 1], rightNum: j });
       j--;
     } else {

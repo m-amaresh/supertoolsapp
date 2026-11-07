@@ -154,8 +154,10 @@ function rowsToObjectRecords(rows: string[][], hasHeader: boolean): unknown[] {
     return rows.map((row) => [...row]);
   }
 
-  const headers = rows[0].map((cell, index) =>
-    normalizeHeaderCell(cell, index),
+  // Rows wider than the header get column_N keys rather than losing cells.
+  const width = Math.max(...rows.map((row) => row.length));
+  const headers = Array.from({ length: width }, (_, index) =>
+    normalizeHeaderCell(rows[0][index] ?? "", index),
   );
   const collisions = new Map<string, number>();
   const stableHeaders = headers.map((header) => {
@@ -165,13 +167,14 @@ function rowsToObjectRecords(rows: string[][], hasHeader: boolean): unknown[] {
     return `${header}_${count + 1}`;
   });
 
-  return rows.slice(1).map((row) => {
-    const record: Record<string, string> = {};
-    for (let i = 0; i < stableHeaders.length; i++) {
-      record[stableHeaders[i]] = row[i] ?? "";
-    }
-    return record;
-  });
+  // Object.fromEntries keeps a "__proto__" header as an ordinary key.
+  return rows
+    .slice(1)
+    .map((row) =>
+      Object.fromEntries(
+        stableHeaders.map((header, i) => [header, row[i] ?? ""]),
+      ),
+    );
 }
 
 function objectRecordsToRows(

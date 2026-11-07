@@ -252,12 +252,12 @@ export function parseColor(input: string): ColorResult {
   if (oklchMatch) {
     let l = Number.parseFloat(oklchMatch[1]);
     const isPct = oklchMatch[2] === "%";
-    const c = Number.parseFloat(oklchMatch[3]);
+    // CSS leaves chroma unbounded; past ~0.4 nothing is displayable, so cap
+    // at 0.5 rather than reject wide-gamut input. RGB is gamut-clamped below.
+    const c = Math.min(Number.parseFloat(oklchMatch[3]), 0.5);
     const h = Number.parseFloat(oklchMatch[4]);
     if (isPct) l /= 100;
-    // Chroma above 0.5 is outside sRGB gamut; clamp rather than reject so
-    // wide-gamut inputs still produce a valid (clamped) output colour.
-    if (l >= 0 && l <= 1 && c >= 0 && c <= 0.5 && h >= 0 && h <= 360) {
+    if (l >= 0 && l <= 1 && c >= 0 && h >= 0 && h <= 360) {
       const rgb = oklchToRgb(l, c, h);
       return {
         hex: rgbToHex(rgb.r, rgb.g, rgb.b),

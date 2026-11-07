@@ -1,4 +1,5 @@
 import {
+  base64ToBase64Url,
   base64ToBytes as sharedBase64ToBytes,
   bytesToBase64 as sharedBytesToBase64,
   bytesToText as sharedBytesToText,
@@ -21,7 +22,7 @@ interface DecodeBase64Options {
 function bytesToBase64(bytes: Uint8Array, variant: Base64Variant): string {
   const standard = sharedBytesToBase64(bytes);
   if (variant === "standard") return standard;
-  return standard.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return base64ToBase64Url(standard);
 }
 
 // Convert base64url back to standard base64 by restoring +/= chars
@@ -101,15 +102,12 @@ export function isValidBase64(
   }
 }
 
-export function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      const base64 = result.split(",")[1] || result;
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.readAsDataURL(file);
-  });
+export async function fileToBase64(file: Blob): Promise<string> {
+  // Encoding the bytes directly avoids splitting a data: URL, which broke on
+  // empty files (an empty payload fell back to the whole URL).
+  try {
+    return sharedBytesToBase64(new Uint8Array(await file.arrayBuffer()));
+  } catch {
+    throw new Error("Failed to read file");
+  }
 }

@@ -34,6 +34,12 @@ describe("color", () => {
     });
   });
 
+  it("caps oklch chroma above 0.5 instead of rejecting it", () => {
+    const result = parseColor("oklch(70% 0.6 30)");
+    expect(result.error).toBeNull();
+    expect(result.oklch).toEqual({ l: 0.7, c: 0.5, h: 30 });
+  });
+
   it("parses oklch percentage input", () => {
     const result = parseColor("oklch(65% 0.2 30)");
     expect(result.error).toBeNull();

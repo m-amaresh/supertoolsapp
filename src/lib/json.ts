@@ -68,12 +68,14 @@ export function sortJsonKeys(obj: unknown): unknown {
     return obj.map(sortJsonKeys);
   }
   if (obj !== null && typeof obj === "object") {
-    const sorted: Record<string, unknown> = {};
-    const keys = Object.keys(obj as Record<string, unknown>).sort();
-    for (const key of keys) {
-      sorted[key] = sortJsonKeys((obj as Record<string, unknown>)[key]);
-    }
-    return sorted;
+    // Object.fromEntries defines own properties, so a "__proto__" key from
+    // JSON.parse stays a key instead of becoming a prototype assignment.
+    const record = obj as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.keys(record)
+        .sort()
+        .map((key) => [key, sortJsonKeys(record[key])]),
+    );
   }
   return obj;
 }

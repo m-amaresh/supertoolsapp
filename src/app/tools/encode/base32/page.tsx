@@ -33,14 +33,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
-import {
-  decodeBase32,
-  encodeBase32,
-  fileToBase32,
-  isValidBase32,
-} from "@/lib/base32";
+import { decodeBase32, encodeBase32, fileToBase32 } from "@/lib/base32";
 import { MAX_INPUT_SIZE, TEXT_ENCODING_OPTIONS } from "@/lib/constants";
 import type { TextEncodingMode } from "@/lib/hex";
+import { toolName } from "@/lib/tools";
 
 type Mode = "encode" | "decode";
 
@@ -100,10 +96,6 @@ export default function Base32Tool() {
             }),
           );
         } else {
-          if (!isValidBase32(text)) {
-            setError("Invalid Base32 string");
-            return;
-          }
           setOutput(decodeBase32(text, { outputEncoding: nextEncoding }));
         }
       } catch (e) {
@@ -157,7 +149,7 @@ export default function Base32Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base32 Encoder & Decoder"
+        title={toolName("/tools/encode/base32")}
         description="Convert text and bytes using RFC 4648 Base32 encoding"
       />
 

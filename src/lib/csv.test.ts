@@ -66,4 +66,24 @@ describe("csv", () => {
 
     expect(output).toBe("name,score\nAlice,10");
   });
+
+  it("keeps cells beyond the header as column_N keys", () => {
+    const output = convertDelimitedToJson("a,b\n1,2,3\n4,5", {
+      format: "csv",
+      hasHeader: true,
+      indent: 0,
+    });
+    expect(output).toBe(
+      '[{"a":"1","b":"2","column_3":"3"},{"a":"4","b":"5","column_3":""}]',
+    );
+  });
+
+  it("keeps a __proto__ header as an ordinary key", () => {
+    const output = convertDelimitedToJson("__proto__,name\nx,y", {
+      format: "csv",
+      hasHeader: true,
+      indent: 0,
+    });
+    expect(output).toBe('[{"__proto__":"x","name":"y"}]');
+  });
 });

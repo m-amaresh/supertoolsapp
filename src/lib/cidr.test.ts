@@ -66,6 +66,19 @@ describe("cidr", () => {
     expect(parseCidr("::ffff:192.0.2.1").info?.version).toBe(6);
   });
 
+  it("parses an embedded IPv4 tail directly after ::", () => {
+    // NAT64 well-known prefix (RFC 6052) and the IPv4-compatible form.
+    expect(parseCidr("64:ff9b::192.0.2.1/128").info?.network).toBe(
+      parseCidr("64:ff9b::c000:201/128").info?.network,
+    );
+    expect(parseCidr("::192.0.2.1/128").info?.network).toBe(
+      parseCidr("::c000:201/128").info?.network,
+    );
+    expect(parseCidr("1:2:3:4:5:6:192.0.2.1").error).toBeNull();
+    expect(parseCidr(":192.0.2.1").error).not.toBeNull();
+    expect(parseCidr("1::2::192.0.2.1").error).not.toBeNull();
+  });
+
   it("normalizes IPv6 host bits within the prefix", () => {
     const { info } = parseCidr("2001:db8:abcd:0012:1234::/48");
     expect(info?.network).toBe("2001:db8:abcd::");

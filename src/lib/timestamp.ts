@@ -17,10 +17,9 @@ export function parseTimestamp(input: string): Date | null {
 
   if (/^\d+$/.test(trimmed)) {
     const num = parseInt(trimmed, 10);
-    if (num > 32503680000) {
-      return new Date(num);
-    }
-    return new Date(num * 1000);
+    const date = new Date(num > 32503680000 ? num : num * 1000);
+    // Past ±8.64e15 ms a Date is invalid, and formatting it throws.
+    return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
