@@ -1,3 +1,5 @@
+import { base64ToBytes, base64UrlToBase64 } from "./bytes";
+
 export interface JwtDecoded {
   header: Record<string, unknown>;
   payload: Record<string, unknown>;
@@ -19,17 +21,26 @@ export interface JwtResult {
 // RFC 8259 mandates be UTF-8 — invalid UTF-8 is a decode failure, not a
 // silent fallback to Latin-1 (which produces mojibake that looks successful).
 function base64UrlDecode(str: string): string {
-  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const pad = base64.length % 4;
-  if (pad) {
-    base64 += "=".repeat(4 - pad);
-  }
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
+  const bytes = base64ToBytes(base64UrlToBase64(str));
   return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+}
+
+// RFC 7519 §7.2: the JOSE header and the claims set must both be JSON
+// objects; `null`, arrays and primitives are malformed tokens.
+function parseJsonObject(text: string): Record<string, unknown> {
+  const value: unknown = JSON.parse(text);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("Not a JSON object");
+  }
+  return value as Record<string, unknown>;
+}
+
+// A NumericDate (seconds since the epoch) as a Date, or null when the claim is
+// absent, not a number, or outside the range a Date can represent.
+function numericDate(value: unknown): Date | null {
+  if (typeof value !== "number") return null;
+  const date = new Date(value * 1000);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 // Decode a JWT without signature verification (inspection only).
@@ -66,14 +77,14 @@ export function decodeJwt(token: string): JwtResult {
 
   try {
     headerRaw = base64UrlDecode(headerB64);
-    header = JSON.parse(headerRaw);
+    header = parseJsonObject(headerRaw);
   } catch {
     return { ...empty, error: "Failed to decode JWT header" };
   }
 
   try {
     payloadRaw = base64UrlDecode(payloadB64);
-    payload = JSON.parse(payloadRaw);
+    payload = parseJsonObject(payloadRaw);
   } catch {
     return { ...empty, error: "Failed to decode JWT payload" };
   }
@@ -83,18 +94,10 @@ export function decodeJwt(token: string): JwtResult {
   let issuedAt: Date | null = null;
   let notBefore: Date | null = null;
 
-  if (typeof payload.exp === "number") {
-    expiresAt = new Date(payload.exp * 1000);
-    isExpired = Date.now() > payload.exp * 1000;
-  }
-
-  if (typeof payload.iat === "number") {
-    issuedAt = new Date(payload.iat * 1000);
-  }
-
-  if (typeof payload.nbf === "number") {
-    notBefore = new Date(payload.nbf * 1000);
-  }
+  expiresAt = numericDate(payload.exp);
+  if (expiresAt) isExpired = Date.now() > expiresAt.getTime();
+  issuedAt = numericDate(payload.iat);
+  notBefore = numericDate(payload.nbf);
 
   return {
     decoded: {
