@@ -118,11 +118,9 @@ async function md5(data: Uint8Array): Promise<Uint8Array> {
 
   const bitLen = data.length * 8;
   const msgLen = data.length;
-  // Leave eight bytes for the original length in the final 64-byte block.
-  const padLen =
-    (msgLen + 8) % 64 === 0
-      ? msgLen + 8
-      : msgLen + 8 + (64 - ((msgLen + 8) % 64));
+  // Room for the 0x80 marker plus the eight-byte length, rounded up to a whole
+  // 64-byte block.
+  const padLen = Math.ceil((msgLen + 9) / 64) * 64;
   const padded = new Uint8Array(padLen);
   padded.set(data);
   padded[msgLen] = 0x80;
@@ -211,30 +209,18 @@ function encodeDigest(
   return base64ToBase64Url(base64);
 }
 
+// Text entry points encode once and delegate to the byte versions, so the two
+// paths cannot drift. An encoding error (e.g. "€" as Latin-1) rejects the
+// whole call rather than surfacing as a per-algorithm "unavailable".
 export async function generateHash(
   input: string,
   algorithm: HashAlgorithm,
   options: HashOptions = {},
 ): Promise<string> {
   const { inputEncoding = "utf8", outputEncoding = "hex" } = options;
-  const inputBytes = textToBytes(input, inputEncoding);
-
-  if (algorithm === "MD5") {
-    return encodeDigest(await md5(inputBytes), outputEncoding);
-  }
-
-  if (algorithm === "SHA3-256") {
-    return encodeDigest(await computeSha3(inputBytes), outputEncoding);
-  }
-
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error("Web Crypto API is not available in this environment");
-  }
-
-  const hashBuffer = await subtle.digest(algorithm, toArrayBuffer(inputBytes));
-  if (outputEncoding === "hex") return bufferToHex(hashBuffer);
-  return encodeDigest(new Uint8Array(hashBuffer), outputEncoding);
+  return generateHashFromBytes(textToBytes(input, inputEncoding), algorithm, {
+    outputEncoding,
+  });
 }
 
 // Collect results from Promise.allSettled into a HashAlgorithm-keyed record,
@@ -258,9 +244,10 @@ export async function generateAllHashes(
   input: string,
   options: HashOptions = {},
 ): Promise<Record<HashAlgorithm, string>> {
-  return settleAllAlgorithms(
-    hashAlgorithms.map((algorithm) => generateHash(input, algorithm, options)),
-  );
+  const { inputEncoding = "utf8", outputEncoding = "hex" } = options;
+  return generateAllHashesFromBytes(textToBytes(input, inputEncoding), {
+    outputEncoding,
+  });
 }
 
 export async function generateHashFromBytes(
@@ -305,46 +292,13 @@ export async function generateHmac(
   algorithm: HashAlgorithm,
   options: HmacOptions = {},
 ): Promise<string> {
-  const {
-    inputEncoding = "utf8",
-    keyEncoding = "utf8",
-    outputEncoding = "hex",
-  } = options;
-
-  if (algorithm === "MD5") {
-    throw new Error("HMAC-MD5 is not supported in this tool");
-  }
-
-  const keyData = textToBytes(key, keyEncoding);
-  const messageData = textToBytes(input, inputEncoding);
-
-  if (algorithm === "SHA3-256") {
-    return encodeDigest(
-      await computeHmacSha3(keyData, messageData),
-      outputEncoding,
-    );
-  }
-
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error("Web Crypto API is not available in this environment");
-  }
-
-  const cryptoKey = await subtle.importKey(
-    "raw",
-    toArrayBuffer(keyData),
-    { name: "HMAC", hash: { name: algorithm } },
-    false,
-    ["sign"],
+  const { inputEncoding = "utf8", ...byteOptions } = options;
+  return generateHmacFromBytes(
+    textToBytes(input, inputEncoding),
+    key,
+    algorithm,
+    byteOptions,
   );
-
-  const signature = await subtle.sign(
-    "HMAC",
-    cryptoKey,
-    toArrayBuffer(messageData),
-  );
-  if (outputEncoding === "hex") return bufferToHex(signature);
-  return encodeDigest(new Uint8Array(signature), outputEncoding);
 }
 
 export async function generateAllHmacs(
@@ -352,10 +306,11 @@ export async function generateAllHmacs(
   key: string,
   options: HmacOptions = {},
 ): Promise<Record<HashAlgorithm, string>> {
-  return settleAllAlgorithms(
-    hashAlgorithms.map((algorithm) =>
-      generateHmac(input, key, algorithm, options),
-    ),
+  const { inputEncoding = "utf8", ...byteOptions } = options;
+  return generateAllHmacsFromBytes(
+    textToBytes(input, inputEncoding),
+    key,
+    byteOptions,
   );
 }
 

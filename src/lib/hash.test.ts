@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { generateHash, generateHmac } from "./hash";
 
@@ -15,6 +16,17 @@ describe("hash", () => {
     await expect(generateHash("abc", "SHA3-256")).resolves.toBe(
       "3a985da74fe225b2045c172d6bd390bd855f086e3e9d525b46bfe24511431532",
     );
+  });
+
+  it("matches node:crypto MD5 across every padding boundary", async () => {
+    // Lengths 55-57, 119-121, … straddle the point where the 0x80 marker and
+    // the 8-byte length no longer fit in the final block.
+    for (let n = 0; n < 200; n++) {
+      const input = "a".repeat(n);
+      await expect(generateHash(input, "MD5")).resolves.toBe(
+        createHash("md5").update(input).digest("hex"),
+      );
+    }
   });
 
   it("matches known HMAC-SHA-256 vector", async () => {
