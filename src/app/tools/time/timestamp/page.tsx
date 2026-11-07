@@ -35,6 +35,7 @@ import {
   parseTimestamp,
   type TimestampFormats,
 } from "@/lib/timestamp";
+import { toolName } from "@/lib/tools";
 
 export default function TimestampConverter() {
   const { readText, pasteError } = useClipboard();
@@ -126,7 +127,7 @@ export default function TimestampConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Unix Timestamp Converter"
+        title={toolName("/tools/time/timestamp")}
         description="Convert between Unix timestamps and human-readable dates"
       />
 

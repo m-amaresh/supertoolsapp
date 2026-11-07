@@ -26,6 +26,7 @@ import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
 import { type CaseType, caseOptions, convertCaseMultiline } from "@/lib/case";
 import { MAX_INPUT_SIZE } from "@/lib/constants";
+import { toolName } from "@/lib/tools";
 
 export default function CaseConverter() {
   const { readText, pasteError } = useClipboard();
@@ -81,7 +82,7 @@ export default function CaseConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Case Converter"
+        title={toolName("/tools/text/case")}
         description="Convert text between camelCase, snake_case, and other formats"
       />
 

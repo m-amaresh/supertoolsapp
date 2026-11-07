@@ -36,6 +36,7 @@ import {
   generatePasswords,
   type PasswordOptions,
 } from "@/lib/password";
+import { toolName } from "@/lib/tools";
 import { parseNonNegativeInt } from "@/lib/utils";
 
 const lengthOptions = [
@@ -155,7 +156,7 @@ export default function PasswordGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Strong Password Generator"
+        title={toolName("/tools/ids/password")}
         description="Cryptographically secure generator using Web Crypto with unbiased random sampling"
       />
 

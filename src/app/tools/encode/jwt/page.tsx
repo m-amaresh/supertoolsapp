@@ -29,6 +29,7 @@ import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
 import { MAX_INPUT_SIZE } from "@/lib/constants";
 import { decodeJwt } from "@/lib/jwt";
+import { toolName } from "@/lib/tools";
 
 const SAMPLE_HEADER = { alg: "HS256", typ: "JWT" };
 const SAMPLE_PAYLOAD = {
@@ -95,7 +96,7 @@ export default function JwtDecoder() {
   return (
     <ToolPage>
       <ToolHeader
-        title="JWT Decoder"
+        title={toolName("/tools/encode/jwt")}
         description="Decode JSON Web Tokens to inspect header, payload, and expiration"
       />
 

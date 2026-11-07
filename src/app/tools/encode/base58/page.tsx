@@ -38,6 +38,7 @@ import {
   encodeBase58,
 } from "@/lib/base58";
 import { MAX_INPUT_SIZE, TEXT_ENCODING_OPTIONS } from "@/lib/constants";
+import { toolName } from "@/lib/tools";
 
 type Mode = "encode" | "decode";
 
@@ -154,7 +155,7 @@ export default function Base58Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base58 Encoder & Decoder"
+        title={toolName("/tools/encode/base58")}
         description="Convert text data with Bitcoin-style Base58 and Base58Check"
       />
 

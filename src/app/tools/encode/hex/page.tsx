@@ -41,6 +41,7 @@ import {
   isValidHex,
   type TextEncodingMode,
 } from "@/lib/hex";
+import { toolName } from "@/lib/tools";
 
 type Mode = "encode" | "decode";
 
@@ -153,7 +154,7 @@ export default function HexTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Hex Encoder & Decoder"
+        title={toolName("/tools/encode/hex")}
         description="Convert text and bytes to hexadecimal and decode hex back"
       />
 

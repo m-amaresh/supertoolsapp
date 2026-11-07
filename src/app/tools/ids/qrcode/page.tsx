@@ -35,6 +35,7 @@ import {
   qrErrorCorrectionOptions,
   qrPresets,
 } from "@/lib/qrcode";
+import { toolName } from "@/lib/tools";
 
 const MARGIN = 2;
 const MODULE_SIZE = 8;
@@ -131,7 +132,7 @@ export default function QrCodeGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="QR Code Generator"
+        title={toolName("/tools/ids/qrcode")}
         description="Encode URLs, Wi-Fi credentials, vCards, or any text into a scannable QR code"
       />
 

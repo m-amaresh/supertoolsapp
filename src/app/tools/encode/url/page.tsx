@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
+import { toolName } from "@/lib/tools";
 import {
   decodeUrl,
   encodeUrl,
@@ -142,7 +143,7 @@ export default function UrlEncoderDecoder() {
   return (
     <ToolPage>
       <ToolHeader
-        title="URL Encoder & Decoder"
+        title={toolName("/tools/encode/url")}
         description="Encode and decode URL components"
       />
 

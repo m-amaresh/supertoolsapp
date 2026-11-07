@@ -48,6 +48,7 @@ import {
   validateRequest,
   validateRequestMetadata,
 } from "@/lib/pdf-encrypt";
+import { toolName } from "@/lib/tools";
 
 const WORKER_URL = "/pdf/qpdf-encrypt-worker.js";
 
@@ -335,7 +336,7 @@ export default function PdfEncryptTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Password Protect PDF"
+        title={toolName("/tools/pdf/encrypt")}
         description="Add a password to a PDF so it cannot be opened without one. The file is encrypted in your browser and never uploaded."
       />
 

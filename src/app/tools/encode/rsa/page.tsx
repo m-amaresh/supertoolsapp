@@ -39,6 +39,7 @@ import {
   signRsaSha256,
   verifyRsaSha256,
 } from "@/lib/rsa";
+import { toolName } from "@/lib/tools";
 
 type Mode = "sign" | "verify";
 
@@ -187,7 +188,7 @@ export default function RsaSignVerifyPage() {
   return (
     <ToolPage>
       <ToolHeader
-        title="RSA Sign & Verify"
+        title={toolName("/tools/encode/rsa")}
         description="Sign and verify messages with RSA (SHA-256) using PEM keys"
       />
 

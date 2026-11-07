@@ -35,6 +35,7 @@ import {
   validateRequest,
   validateRequestMetadata,
 } from "@/lib/pdf-unlock";
+import { toolName } from "@/lib/tools";
 
 const WORKER_URL = "/pdf/qpdf-worker.js";
 
@@ -260,7 +261,7 @@ export default function PdfUnlockTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="PDF Password Remover"
+        title={toolName("/tools/pdf/unlock")}
         description="Remove the password from a PDF you can already open. The file is decrypted in your browser and never uploaded."
       />
 

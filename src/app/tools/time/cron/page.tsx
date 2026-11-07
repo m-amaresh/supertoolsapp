@@ -33,6 +33,7 @@ import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
 import { cronPresets, parseCron } from "@/lib/cron";
+import { toolName } from "@/lib/tools";
 
 function formatDate(date: Date): string {
   return date.toLocaleString(undefined, {
@@ -267,7 +268,7 @@ export default function CronParser() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Cron Expression Parser & Builder"
+        title={toolName("/tools/time/cron")}
         description="Build and parse cron expressions with human-readable descriptions and next run times"
       />
 

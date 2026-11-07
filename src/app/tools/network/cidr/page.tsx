@@ -37,6 +37,7 @@ import {
   splitCidr,
   type VlsmResult,
 } from "@/lib/cidr";
+import { toolName } from "@/lib/tools";
 
 type Mode = "info" | "split";
 
@@ -120,7 +121,7 @@ export default function CidrCalculator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="CIDR / Subnet Calculator"
+        title={toolName("/tools/network/cidr")}
         description="Analyze a CIDR range or split it into variable-size child subnets (VLSM)"
       />
 

@@ -35,6 +35,7 @@ import {
   type DiffOptions,
   getDiffStats,
 } from "@/lib/diff";
+import { toolName } from "@/lib/tools";
 
 const MAX_LINES = 3000;
 // LCS uses an O(m×n) DP table — cap the product to prevent out-of-memory
@@ -123,7 +124,7 @@ export default function TextDiff() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Text Diff Checker"
+        title={toolName("/tools/text/diff")}
         description="Compare two texts side by side and highlight differences"
       />
 

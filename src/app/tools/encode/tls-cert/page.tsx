@@ -31,6 +31,7 @@ import {
   inspectTlsCertificates,
   type ParsedTlsCertificate,
 } from "@/lib/tls-cert";
+import { toolName } from "@/lib/tools";
 
 const MAX_INPUT_SIZE = 2 * 1024 * 1024;
 
@@ -145,7 +146,7 @@ export default function TlsCertificateViewer() {
   return (
     <ToolPage>
       <ToolHeader
-        title="TLS Certificate Decoder"
+        title={toolName("/tools/encode/tls-cert")}
         description="Inspect PEM certificate metadata locally (subject, issuer, validity, SAN, and fingerprints)"
       />
 

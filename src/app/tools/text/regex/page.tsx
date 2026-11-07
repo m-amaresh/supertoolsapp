@@ -35,6 +35,7 @@ import {
   regexFlagsToString,
   regexPresets,
 } from "@/lib/regex";
+import { toolName } from "@/lib/tools";
 
 const REGEX_TIMEOUT_MS = 500;
 
@@ -226,7 +227,7 @@ export default function RegexTester() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Regex Tester"
+        title={toolName("/tools/text/regex")}
         description="Test regular expressions with live matching and capture groups"
       />
 

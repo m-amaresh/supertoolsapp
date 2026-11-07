@@ -41,6 +41,7 @@ import {
   isValidBase64,
 } from "@/lib/base64";
 import { MAX_INPUT_SIZE, TEXT_ENCODING_OPTIONS } from "@/lib/constants";
+import { toolName } from "@/lib/tools";
 
 type Mode = "encode" | "decode";
 
@@ -209,7 +210,7 @@ export default function Base64Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base64 Encoder & Decoder"
+        title={toolName("/tools/encode/base64")}
         description="Convert text to Base64 and back"
       />
 

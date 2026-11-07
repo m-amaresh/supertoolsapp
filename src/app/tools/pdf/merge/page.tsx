@@ -46,6 +46,7 @@ import {
   validateBytes,
   validateSelection,
 } from "@/lib/pdf-merge";
+import { toolName } from "@/lib/tools";
 
 const WORKER_URL = "/pdf/qpdf-merge-worker.js";
 
@@ -372,7 +373,7 @@ export default function PdfMergeTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="PDF Merger"
+        title={toolName("/tools/pdf/merge")}
         description="Combine several PDFs into one document, in the order you choose. The files are merged in your browser and never uploaded."
       />
 

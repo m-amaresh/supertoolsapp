@@ -30,6 +30,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAnnouncer } from "@/hooks/useAnnouncement";
 import { useFocusResult, useRunShortcut } from "@/hooks/useRunShortcut";
+import { toolName } from "@/lib/tools";
 import { parseNonNegativeInt } from "@/lib/utils";
 import { generateBulkUuids, type UuidOptions } from "@/lib/uuid";
 
@@ -99,7 +100,7 @@ export default function UuidGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="UUID Generator"
+        title={toolName("/tools/ids/uuid")}
         description="Generate random UUIDs (v4) with formatting options"
       />
 

@@ -28,6 +28,7 @@ import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
 import { generatePalette, parseColor } from "@/lib/color";
+import { toolName } from "@/lib/tools";
 
 const paletteCountOptions = [
   { value: "4", label: "4" },
@@ -75,7 +76,7 @@ export default function ColorConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Color Converter"
+        title={toolName("/tools/data/color")}
         description="Convert between HEX, RGB, HSL, and OKLCH with palette generation"
       />
 

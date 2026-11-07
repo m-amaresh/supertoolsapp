@@ -33,6 +33,7 @@ import {
   escapeString,
   unescapeString,
 } from "@/lib/escape";
+import { toolName } from "@/lib/tools";
 
 const modeOptions = [
   { value: "html", label: "HTML Entities" },
@@ -83,7 +84,7 @@ export default function StringEscape() {
   return (
     <ToolPage>
       <ToolHeader
-        title="String Escape & Unescape"
+        title={toolName("/tools/encode/escape")}
         description="Escape and unescape strings for HTML, JSON, URL, and regex"
       />
 

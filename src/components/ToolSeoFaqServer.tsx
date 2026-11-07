@@ -43,9 +43,9 @@ export function ToolSeoFaqServer({ path }: ToolSeoFaqServerProps) {
       {appSchema && (
         <script type="application/ld+json">{JSON.stringify(appSchema)}</script>
       )}
-      {section && (
+      {section && tool && (
         <SeoFaq
-          title={section.title}
+          title={`${tool.name} FAQ`}
           about={section.about}
           howToUse={section.howToUse}
           items={section.items}

@@ -50,6 +50,7 @@ import {
   type HashTextEncoding,
   hashAlgorithms,
 } from "@/lib/hash";
+import { toolName } from "@/lib/tools";
 
 const outputEncodingOptions = [
   { value: "hex", label: "Hex" },
@@ -277,7 +278,7 @@ export default function HashGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Hash Generator"
+        title={toolName("/tools/encode/hash")}
         description="Generate MD5, SHA, SHA3, and HMAC digests from text or files"
       />
 

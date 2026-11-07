@@ -31,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAnnouncer } from "@/hooks/useAnnouncement";
 import { useFocusResult, useRunShortcut } from "@/hooks/useRunShortcut";
 import { generateLorem, type LoremUnit } from "@/lib/lorem";
+import { toolName } from "@/lib/tools";
 import { parseNonNegativeInt } from "@/lib/utils";
 
 const unitOptions = [
@@ -104,7 +105,7 @@ export default function LoremIpsumGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Lorem Ipsum Generator"
+        title={toolName("/tools/text/lorem")}
         description="Generate placeholder text for designs and layouts"
       />
 

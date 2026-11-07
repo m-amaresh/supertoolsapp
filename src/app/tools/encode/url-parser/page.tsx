@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
+import { toolName } from "@/lib/tools";
 import {
   buildUrlFromParts,
   isNeutralUrlBuilderState,
@@ -286,7 +287,7 @@ export default function UrlParserBuilder() {
   return (
     <ToolPage>
       <ToolHeader
-        title="URL Parser & Query Builder"
+        title={toolName("/tools/encode/url-parser")}
         description="Inspect URL components and edit query parameters interactively"
       />
 

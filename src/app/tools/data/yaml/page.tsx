@@ -33,6 +33,7 @@ import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { useToolState } from "@/hooks/useToolState";
 import { MAX_INPUT_SIZE } from "@/lib/constants";
+import { toolName } from "@/lib/tools";
 import {
   convertJsonToYaml,
   convertYamlToJson,
@@ -193,7 +194,7 @@ export default function YamlConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="YAML Converter & Validator"
+        title={toolName("/tools/data/yaml")}
         description="Convert JSON and YAML in both directions, and validate YAML syntax"
       />
 

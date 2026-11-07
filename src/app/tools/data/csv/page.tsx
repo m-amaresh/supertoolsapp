@@ -37,6 +37,7 @@ import {
   convertJsonToDelimited,
   type DelimitedFormat,
 } from "@/lib/csv";
+import { toolName } from "@/lib/tools";
 
 type Mode = "delimited-to-json" | "json-to-delimited";
 
@@ -149,7 +150,7 @@ export default function CsvJsonConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="CSV/TSV ↔ JSON Converter"
+        title={toolName("/tools/data/csv")}
         description="Convert delimited data and JSON arrays locally in your browser"
       />
 

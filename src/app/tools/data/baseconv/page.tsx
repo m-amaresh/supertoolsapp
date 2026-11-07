@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { useAnnouncement } from "@/hooks/useAnnouncement";
 import { useClipboard } from "@/hooks/useClipboard";
 import { BASE_LABELS, convertBase, type NumberBase } from "@/lib/baseconv";
+import { toolName } from "@/lib/tools";
 
 const baseOptions = [
   { value: "dec", label: "Decimal (10)" },
@@ -67,7 +68,7 @@ export default function NumberBaseConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Number Base Converter"
+        title={toolName("/tools/data/baseconv")}
         description="Convert numbers between binary, octal, decimal, and hexadecimal"
       />
 

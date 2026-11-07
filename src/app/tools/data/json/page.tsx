@@ -37,6 +37,7 @@ import {
   sortJsonKeys,
   validateJson,
 } from "@/lib/json";
+import { toolName } from "@/lib/tools";
 
 type OutputMode = "format" | "minify";
 
@@ -132,7 +133,7 @@ export default function JsonFormatter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="JSON Formatter & Validator"
+        title={toolName("/tools/data/json")}
         description="Validate, format, and minify JSON with error highlighting"
       />
 

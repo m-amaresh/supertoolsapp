@@ -178,7 +178,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "link2",
   },
   {
-    name: "URL Parser & Builder",
+    name: "URL Parser & Query Builder",
     description: "Inspect URL parts and edit query params",
     href: "/tools/encode/url-parser",
     available: true,
@@ -259,7 +259,7 @@ export const toolDefinitions: ToolDefinition[] = [
     featured: false,
     homeOrder: 18,
     sidebarCategory: "Crypto",
-    sidebarLabel: "RSA Sign/Verify",
+    sidebarLabel: "RSA Sign & Verify",
     sidebarOrder: 4,
     icon: "penLine",
   },
@@ -271,7 +271,7 @@ export const toolDefinitions: ToolDefinition[] = [
     featured: false,
     homeOrder: 23,
     sidebarCategory: "Crypto",
-    sidebarLabel: "TLS Cert Viewer",
+    sidebarLabel: "TLS Cert Decoder",
     sidebarOrder: 5,
     icon: "shield",
   },
@@ -290,7 +290,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "filePdf",
   },
   {
-    name: "Password Protect PDF",
+    name: "PDF Password Protector",
     description: "Add a password and permissions to a PDF",
     href: "/tools/pdf/encrypt",
     available: true,
@@ -314,7 +314,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "layerGroup",
   },
   {
-    name: "Split PDF",
+    name: "PDF Splitter",
     description: "Extract pages or cut a PDF into smaller files",
     href: "/tools/pdf/split",
     available: true,
@@ -519,7 +519,7 @@ export const toolCategories: ToolCategoryPage[] = [
     slug: "pdf",
     heading: "PDF Tools",
     description:
-      "Work with PDF files without uploading them. Merge documents into one, and remove password protection from files you can already open — entirely inside your browser.",
+      "Work with PDF files without uploading them. Merge documents, split out pages, add a password, or remove one from files you can already open — entirely inside your browser.",
   },
   {
     name: "Data",
@@ -563,4 +563,11 @@ export function toolsInCategory(name: SidebarToolCategory): ToolDefinition[] {
   return (
     sidebarToolGroups.find((group) => group.name === name)?.tools ?? []
   ).filter((tool) => tool.available);
+}
+
+/** A tool's display name: the single source for its H1, cards and FAQ. */
+export function toolName(href: string): string {
+  const tool = toolDefinitions.find((t) => t.href === href);
+  if (!tool) throw new Error(`Unknown tool: ${href}`);
+  return tool.name;
 }

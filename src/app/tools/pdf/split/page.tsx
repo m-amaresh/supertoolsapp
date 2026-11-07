@@ -48,6 +48,7 @@ import {
   validateRequest,
   validateRequestMetadata,
 } from "@/lib/pdf-split";
+import { toolName } from "@/lib/tools";
 
 const WORKER_URL = "/pdf/qpdf-split-worker.js";
 
@@ -555,7 +556,7 @@ export default function PdfSplitTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Split PDF"
+        title={toolName("/tools/pdf/split")}
         description="Pull out the pages you want, or cut a PDF into smaller files. The document is split in your browser and never uploaded."
       />
 

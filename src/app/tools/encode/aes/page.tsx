@@ -46,6 +46,7 @@ import {
   textToBytes,
 } from "@/lib/aes";
 import { MAX_INPUT_SIZE, TEXT_ENCODING_OPTIONS } from "@/lib/constants";
+import { toolName } from "@/lib/tools";
 
 type Mode = "encrypt" | "decrypt";
 type SourceMode = "text" | "file";
@@ -322,7 +323,7 @@ export default function AesGcmTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="AES Encryption & Decryption"
+        title={toolName("/tools/encode/aes")}
         description="Authenticated encryption with AES-256-GCM and PBKDF2 key derivation"
       />
 

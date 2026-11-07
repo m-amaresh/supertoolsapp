@@ -35,6 +35,7 @@ import {
   crc32Update,
 } from "@/lib/crc32";
 import type { TextEncodingMode } from "@/lib/hex";
+import { toolName } from "@/lib/tools";
 
 const outputFormatOptions = [
   { value: "hex", label: "Hex" },
@@ -153,7 +154,7 @@ export default function Crc32Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="CRC32 Checksum Calculator"
+        title={toolName("/tools/encode/crc32")}
         description="Compute fast CRC32 checksums for text or files locally in your browser"
       />
 
