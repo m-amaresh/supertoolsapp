@@ -75,9 +75,15 @@ function parseField(
           values.add(normalize ? normalize(i) : i);
         }
       } else {
+        if (!/^\d+$/.test(range)) return null;
         const val = Number.parseInt(range, 10);
-        if (Number.isNaN(val) || val < min || val > max) return null;
-        values.add(normalize ? normalize(val) : val);
+        if (val < min || val > max) return null;
+        // "N/step" means N through the field's maximum (cronie); without a
+        // step it is just N.
+        const last = stepMatch ? max : val;
+        for (let i = val; i <= last; i += step) {
+          values.add(normalize ? normalize(i) : i);
+        }
       }
     }
   }
@@ -97,26 +103,25 @@ function describeField(
 ): string {
   if (field === "*") return `every ${unit}`;
 
-  const stepMatch = field.match(/^\*\/(\d+)$/);
-  if (stepMatch) return `every ${stepMatch[1]} ${unit}s`;
+  const label = (raw: string) => {
+    if (!names) return raw;
+    const value = Number.parseInt(raw, 10);
+    return names[normalize ? normalize(value) : value] || raw;
+  };
 
-  const parts = field.split(",").map((p) => {
-    const rangeMatch = p.match(/^(\d+)-(\d+)$/);
-    if (rangeMatch) {
-      const rawStart = Number.parseInt(rangeMatch[1], 10);
-      const rawEnd = Number.parseInt(rangeMatch[2], 10);
-      const startIdx = normalize ? normalize(rawStart) : rawStart;
-      const endIdx = normalize ? normalize(rawEnd) : rawEnd;
-      const start = names ? names[startIdx] : rangeMatch[1];
-      const end = names ? names[endIdx] : rangeMatch[2];
-      return `${start} through ${end}`;
-    }
-    if (names) {
-      const rawIdx = Number.parseInt(p, 10);
-      const idx = normalize ? normalize(rawIdx) : rawIdx;
-      return names[idx] || p;
-    }
-    return p;
+  const parts = field.split(",").map((part) => {
+    const [range, step] = part.split("/");
+    const rangeMatch = range.match(/^(\d+)-(\d+)$/);
+    const base = rangeMatch
+      ? `${label(rangeMatch[1])} through ${label(rangeMatch[2])}`
+      : label(range);
+    if (step === undefined) return base;
+
+    const every = step === "1" ? `every ${unit}` : `every ${step} ${unit}s`;
+    if (range === "*") return every;
+    // Numeric fields read better with the unit: "from minute 5 through 30".
+    const from = names ? base : `${unit} ${base}`;
+    return rangeMatch ? `${every} from ${from}` : `${every} from ${from} on`;
   });
 
   return parts.join(", ");
@@ -148,6 +153,9 @@ function buildDescription(fields: CronFields): string {
     } else {
       parts.push(`At minute ${minDesc} past ${hourDesc}`);
     }
+  } else if (fields.minute.includes("/")) {
+    const minuteDesc = describeField(fields.minute, null, "minute");
+    parts.push(minuteDesc[0].toUpperCase() + minuteDesc.slice(1));
   } else if (fields.minute !== "*") {
     parts.push(`At minute ${describeField(fields.minute, null, "minute")}`);
   } else {
@@ -156,20 +164,30 @@ function buildDescription(fields: CronFields): string {
     );
   }
 
+  // Stepped fields describe themselves ("every 2 months from January
+  // through November"); plain ones need a preposition.
   if (fields.dayOfMonth !== "*") {
+    const desc = describeField(fields.dayOfMonth, null, "day");
     parts.push(
-      `on day ${describeField(fields.dayOfMonth, null, "day")} of the month`,
+      fields.dayOfMonth.includes("/")
+        ? `${desc} of the month`
+        : `on day ${desc} of the month`,
     );
   }
 
   if (fields.month !== "*") {
-    parts.push(`in ${describeField(fields.month, MONTH_NAMES, "month")}`);
+    const desc = describeField(fields.month, MONTH_NAMES, "month");
+    parts.push(fields.month.includes("/") ? desc : `in ${desc}`);
   }
 
   if (fields.dayOfWeek !== "*") {
-    parts.push(
-      `on ${describeField(fields.dayOfWeek, DAY_NAMES, "day", normalizeDayOfWeek)}`,
+    const desc = describeField(
+      fields.dayOfWeek,
+      DAY_NAMES,
+      "day",
+      normalizeDayOfWeek,
     );
+    parts.push(fields.dayOfWeek.includes("/") ? desc : `on ${desc}`);
   }
 
   return parts.join(", ");
@@ -177,8 +195,9 @@ function buildDescription(fields: CronFields): string {
 
 // Walk forward from now to find the next `count` matching times.
 // Skips non-matching months/days/hours in bulk to avoid iterating minute-by-minute.
-// Day matching follows standard cron: if both day-of-month and day-of-week are
-// specified (non-wildcard), either match satisfies the constraint (OR logic).
+// Day matching follows Vixie cron and cronie: when both day fields are
+// restricted, either may match (OR). A field whose text starts with "*"
+// (including "*/2") counts as unrestricted, and then both must match (AND).
 function getNextRuns(fields: CronFields, count: number): Date[] | null {
   const minutes = parseField(fields.minute, 0, 59);
   const hours = parseField(fields.hour, 0, 23);
@@ -195,8 +214,8 @@ function getNextRuns(fields: CronFields, count: number): Date[] | null {
   const dowSet = new Set(daysOfWeek);
   const hourSet = new Set(hours);
   const minuteSet = new Set(minutes);
-  const domIsWildcard = fields.dayOfMonth === "*";
-  const dowIsWildcard = fields.dayOfWeek === "*";
+  const eitherDayFieldStarred =
+    fields.dayOfMonth.startsWith("*") || fields.dayOfWeek.startsWith("*");
 
   const runs: Date[] = [];
   const now = new Date();
@@ -217,14 +236,9 @@ function getNextRuns(fields: CronFields, count: number): Date[] | null {
 
     const dayOfMonthMatch = domSet.has(candidate.getDate());
     const dayOfWeekMatch = dowSet.has(candidate.getDay());
-    const dayMatches =
-      domIsWildcard && dowIsWildcard
-        ? true
-        : domIsWildcard
-          ? dayOfWeekMatch
-          : dowIsWildcard
-            ? dayOfMonthMatch
-            : dayOfMonthMatch || dayOfWeekMatch;
+    const dayMatches = eitherDayFieldStarred
+      ? dayOfMonthMatch && dayOfWeekMatch
+      : dayOfMonthMatch || dayOfWeekMatch;
 
     if (!dayMatches) {
       candidate.setDate(candidate.getDate() + 1);
