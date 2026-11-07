@@ -21,7 +21,7 @@ step and fails outright if there is no production build to serve. A green
 ## Runtime and Build Notes
 
 - Package manager: `pnpm`
-- Node target: `24.x`
+- Node target: `26.x`
 - Framework: Next.js 16 App Router
 - TypeScript: `6`
 - Linting/formatting: Biome

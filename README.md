@@ -8,7 +8,7 @@
     <img src="https://img.shields.io/badge/Vercel-deployed-000000?style=for-the-badge&logo=vercel&logoColor=white" />
   </a>
   <br/>
-  <img src="https://img.shields.io/badge/node-24.x-339933?style=for-the-badge&logo=node.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/node-26.x-339933?style=for-the-badge&logo=node.js&logoColor=white" />
   <img src="https://img.shields.io/badge/Next.js-16.x.x-black?style=for-the-badge&logo=next.js&logoColor=white" />
 </p>
 
@@ -35,7 +35,7 @@ A fast, privacy-first suite of developer utilities that run entirely in your bro
 
 ## Quick Start
 
-**Requirements:** Node.js `24.x`, pnpm
+**Requirements:** Node.js `26.x`, pnpm `12.x`
 
 ```bash
 pnpm install

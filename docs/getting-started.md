@@ -4,8 +4,8 @@ This guide covers the practical setup for running SuperTools locally and the few
 
 ## Requirements
 
-- Node.js `24.x`
-- pnpm
+- Node.js `26.x`
+- pnpm `12.x`
 
 ## Install and Run
 

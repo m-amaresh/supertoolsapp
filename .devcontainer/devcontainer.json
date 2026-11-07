@@ -6,7 +6,7 @@
 	"image": "mcr.microsoft.com/devcontainers/base:noble",
 	"features": {
 		"ghcr.io/devcontainers/features/node:2": {
-			"version": "lts",
+			"version": "26",
 			"pnpmVersion": "latest",
 			"nvmVersion": "latest"
 		}
