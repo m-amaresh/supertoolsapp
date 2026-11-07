@@ -555,7 +555,7 @@ export default function PdfSplitTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="PDF Splitter"
+        title="Split PDF"
         description="Pull out the pages you want, or cut a PDF into smaller files. The document is split in your browser and never uploaded."
       />
 

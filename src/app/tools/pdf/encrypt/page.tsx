@@ -335,7 +335,7 @@ export default function PdfEncryptTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="PDF Password Protector"
+        title="Password Protect PDF"
         description="Add a password to a PDF so it cannot be opened without one. The file is encrypted in your browser and never uploaded."
       />
 

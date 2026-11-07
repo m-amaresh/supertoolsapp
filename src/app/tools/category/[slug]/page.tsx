@@ -136,6 +136,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {tools.map((tool) => (
               <Link
+                prefetch={false}
                 key={tool.href}
                 href={tool.href}
                 className="glass-panel group flex min-h-24 items-center justify-between gap-3 rounded-xl p-4 transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -167,6 +168,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               .filter((c) => c.slug !== category.slug)
               .map((c) => (
                 <Link
+                  prefetch={false}
                   key={c.slug}
                   href={`/tools/category/${c.slug}`}
                   className="inline-flex min-h-8 items-center rounded-full border border-border bg-background px-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"

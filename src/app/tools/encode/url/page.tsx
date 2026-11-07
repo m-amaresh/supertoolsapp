@@ -142,7 +142,7 @@ export default function UrlEncoderDecoder() {
   return (
     <ToolPage>
       <ToolHeader
-        title="URL Encoder/Decoder"
+        title="URL Encoder & Decoder"
         description="Encode and decode URL components"
       />
 

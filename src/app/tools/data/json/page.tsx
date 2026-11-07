@@ -132,7 +132,7 @@ export default function JsonFormatter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="JSON Formatter"
+        title="JSON Formatter & Validator"
         description="Validate, format, and minify JSON with error highlighting"
       />
 

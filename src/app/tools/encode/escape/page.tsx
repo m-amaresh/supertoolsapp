@@ -83,7 +83,7 @@ export default function StringEscape() {
   return (
     <ToolPage>
       <ToolHeader
-        title="String Escape / Unescape"
+        title="String Escape & Unescape"
         description="Escape and unescape strings for HTML, JSON, URL, and regex"
       />
 

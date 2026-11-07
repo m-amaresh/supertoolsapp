@@ -157,7 +157,7 @@ export default function Base32Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base32 Encoder/Decoder"
+        title="Base32 Encoder & Decoder"
         description="Convert text and bytes using RFC 4648 Base32 encoding"
       />
 

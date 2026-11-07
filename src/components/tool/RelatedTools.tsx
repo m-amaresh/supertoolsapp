@@ -41,6 +41,7 @@ export function RelatedTools({ path }: RelatedToolsProps) {
           {related.map((t) => (
             <li key={t.href}>
               <Link
+                prefetch={false}
                 href={t.href}
                 className="block rounded-lg border border-border p-3 transition-colors hover:border-primary/50 hover:bg-foreground/[0.03]"
               >

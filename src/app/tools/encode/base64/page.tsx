@@ -209,7 +209,7 @@ export default function Base64Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base64 Encoder/Decoder"
+        title="Base64 Encoder & Decoder"
         description="Convert text to Base64 and back"
       />
 

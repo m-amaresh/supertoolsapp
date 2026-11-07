@@ -153,7 +153,7 @@ export default function Crc32Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="CRC32 Checksum"
+        title="CRC32 Checksum Calculator"
         description="Compute fast CRC32 checksums for text or files locally in your browser"
       />
 

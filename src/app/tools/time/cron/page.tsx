@@ -267,7 +267,7 @@ export default function CronParser() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Cron Parser & Builder"
+        title="Cron Expression Parser & Builder"
         description="Build and parse cron expressions with human-readable descriptions and next run times"
       />
 

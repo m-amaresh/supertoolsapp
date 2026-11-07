@@ -123,7 +123,7 @@ export default function TextDiff() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Text Diff"
+        title="Text Diff Checker"
         description="Compare two texts side by side and highlight differences"
       />
 

@@ -32,6 +32,7 @@ export function ToolSeoFaqServer({ path }: ToolSeoFaqServerProps) {
           "@type": "Organization",
           name: "SuperTools",
           url: getSiteUrl(),
+          logo: `${getSiteUrl()}/logo.png`,
           sameAs: [GITHUB_REPO_URL],
         },
       }

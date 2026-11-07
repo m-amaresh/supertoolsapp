@@ -145,7 +145,7 @@ export default function TlsCertificateViewer() {
   return (
     <ToolPage>
       <ToolHeader
-        title="TLS Certificate Content Viewer"
+        title="TLS Certificate Decoder"
         description="Inspect PEM certificate metadata locally (subject, issuer, validity, SAN, and fingerprints)"
       />
 

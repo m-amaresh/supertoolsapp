@@ -322,7 +322,7 @@ export default function AesGcmTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="AES-GCM Encrypt/Decrypt"
+        title="AES Encryption & Decryption"
         description="Authenticated encryption with AES-256-GCM and PBKDF2 key derivation"
       />
 

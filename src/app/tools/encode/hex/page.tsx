@@ -153,7 +153,7 @@ export default function HexTool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Hex Encoder/Decoder"
+        title="Hex Encoder & Decoder"
         description="Convert text and bytes to hexadecimal and decode hex back"
       />
 

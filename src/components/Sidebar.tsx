@@ -129,6 +129,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <li key={tool.href}>
                         {isAvailable ? (
                           <Link
+                            prefetch={false}
                             href={tool.href}
                             onClick={onClose}
                             aria-current={isActive ? "page" : undefined}

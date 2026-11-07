@@ -154,7 +154,7 @@ export default function Base58Tool() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Base58/Base58Check Encoder/Decoder"
+        title="Base58 Encoder & Decoder"
         description="Convert text data with Bitcoin-style Base58 and Base58Check"
       />
 

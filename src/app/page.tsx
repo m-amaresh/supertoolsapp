@@ -55,7 +55,7 @@ export default function Home() {
     "@type": "Organization",
     name: "SuperTools",
     url: siteUrl,
-    logo: `${siteUrl}/icon.svg`,
+    logo: `${siteUrl}/logo.png`,
     description:
       "Privacy-first browser developer utilities with client-side processing.",
     sameAs: [GITHUB_REPO_URL],
@@ -128,6 +128,7 @@ export default function Home() {
           <div className="mt-5 flex flex-wrap gap-2 border-t border-border pt-4">
             {categorySummary.map((group) => (
               <Link
+                prefetch={false}
                 key={group.name}
                 href={`/tools/category/${group.slug}`}
                 className="inline-flex min-h-8 items-center rounded-full border border-border bg-background px-2.5 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -152,6 +153,7 @@ export default function Home() {
           <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
             {featuredTools.map((tool, i) => (
               <Link
+                prefetch={false}
                 key={tool.href}
                 href={tool.href}
                 className="glass-panel reveal-up transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg group flex min-h-28 items-start justify-between gap-3 rounded-xl p-4 sm:p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -194,6 +196,7 @@ export default function Home() {
               <div key={tool.href}>
                 {tool.available ? (
                   <Link
+                    prefetch={false}
                     href={tool.href}
                     className="glass-panel reveal-up transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg group flex min-h-24 items-center justify-between gap-3 rounded-xl p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     style={

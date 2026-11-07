@@ -187,7 +187,7 @@ export default function RsaSignVerifyPage() {
   return (
     <ToolPage>
       <ToolHeader
-        title="RSA Sign/Verify"
+        title="RSA Sign & Verify"
         description="Sign and verify messages with RSA (SHA-256) using PEM keys"
       />
 

@@ -267,7 +267,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/ids/password": {
-    title: "Password Generator FAQ",
+    title: "Strong Password Generator FAQ",
     about:
       "Create strong, random passwords using cryptographically secure browser APIs. This password generator lets you control length, character sets, and exclusion rules to produce passwords that meet virtually any security policy. Passwords are generated locally using the Web Crypto API — they are never sent to a server or stored anywhere. Strong passwords are your first line of defence against credential stuffing, brute-force attacks, and dictionary attacks. Use this tool to generate passwords for accounts, API keys, encryption passphrases, and any context where randomness and length matter.",
     howToUse: [
@@ -305,7 +305,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/base64": {
-    title: "Base64 Encoder/Decoder FAQ",
+    title: "Base64 Encoder & Decoder FAQ",
     about:
       "Encode text or binary data to Base64 and decode Base64 strings back to their original form, entirely in your browser. Base64 is a binary-to-text encoding scheme that represents binary data using a set of 64 ASCII characters, making it safe for transport in text-based systems like email, JSON, HTML, and URLs. This tool supports standard Base64 and the URL-safe Base64 variant (Base64url), and can handle both text input and file uploads. All encoding and decoding runs client-side — your data never leaves your device.",
     howToUse: [
@@ -353,7 +353,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/base32": {
-    title: "Base32 Encoder/Decoder FAQ",
+    title: "Base32 Encoder & Decoder FAQ",
     about:
       "Encode and decode data using Base32, a binary-to-text encoding that uses a 32-character alphabet (A-Z and 2-7). Base32 is widely used for TOTP/HOTP secrets in two-factor authentication, DNS labels, and any context where case-insensitive, human-readable encoding is needed. Unlike Base64, Base32 avoids characters that can be confused in certain fonts or input methods. This tool supports both padded and unpadded output, uppercase and lowercase modes, and runs entirely in your browser with no server-side processing.",
     howToUse: [
@@ -391,7 +391,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/hex": {
-    title: "Hex Encoder/Decoder FAQ",
+    title: "Hex Encoder & Decoder FAQ",
     about:
       "Convert text to hexadecimal representation and decode hex strings back to readable text. Hexadecimal encoding expresses each byte as two characters (0-9, a-f), making it a standard format for displaying binary data, hash digests, memory addresses, colour codes, and network packet dumps. Developers frequently use hex encoding when debugging binary protocols, inspecting file headers, or working with cryptographic output. This tool handles UTF-8 text-to-hex conversion and hex-to-text decoding entirely in the browser.",
     howToUse: [
@@ -429,7 +429,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/data/json": {
-    title: "JSON Formatter FAQ",
+    title: "JSON Formatter & Validator FAQ",
     about:
       "Format, validate, and minify JSON data instantly in your browser. JSON (JavaScript Object Notation) is the most widely used data interchange format in modern APIs, configuration files, and databases. This formatter helps developers quickly beautify minified JSON for readability, validate JSON syntax to catch errors before deployment, and minify formatted JSON to reduce payload size. You can control indentation depth and optionally sort object keys for consistent output. All processing runs locally — your JSON payloads, API responses, and configuration data are never transmitted to a server.",
     howToUse: [
@@ -468,7 +468,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/text/diff": {
-    title: "Text Diff FAQ",
+    title: "Text Diff Checker FAQ",
     about:
       "Compare two blocks of text side by side and see exactly what changed between them. This diff tool highlights added, removed, and unchanged lines using a clear colour-coded display. It is useful for reviewing configuration changes, comparing API responses, checking code edits, verifying migration output, and any scenario where you need to spot differences between two versions of text. Options to ignore whitespace and case let you focus on meaningful changes. All comparison runs locally in your browser — nothing is uploaded.",
     howToUse: [
@@ -506,7 +506,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/time/timestamp": {
-    title: "Timestamp Converter FAQ",
+    title: "Unix Timestamp Converter FAQ",
     about:
       'Convert between Unix timestamps and human-readable dates instantly. Unix timestamps count the seconds (or milliseconds) since January 1, 1970 (the Unix epoch) and are the standard time representation in APIs, databases, log files, and system events. This converter lets you paste a Unix timestamp and see it as ISO 8601, UTC, local time, and relative time (e.g. "3 hours ago"), or enter a date and get the corresponding Unix seconds and milliseconds. Everything runs in your browser — no server calls are made.',
     howToUse: [
@@ -592,7 +592,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/crc32": {
-    title: "CRC32 FAQ",
+    title: "CRC32 Checksum Calculator FAQ",
     about:
       "Calculate CRC32 checksums for text and files directly in your browser. CRC32 (Cyclic Redundancy Check) is a fast, widely-used error-detection algorithm that produces a 32-bit checksum. It is used in file formats like ZIP and PNG, network protocols like Ethernet, storage systems, and data transfer pipelines to verify data integrity. While CRC32 is not cryptographically secure, it is extremely fast and effective at catching accidental data corruption. This tool computes CRC32 for text input and file uploads entirely client-side.",
     howToUse: [
@@ -630,7 +630,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/aes": {
-    title: "AES-GCM FAQ",
+    title: "AES Encryption & Decryption FAQ",
     about:
       "Encrypt and decrypt text and files using AES-256-GCM, a modern authenticated encryption standard, directly in your browser. AES-GCM provides both confidentiality and integrity protection, ensuring data cannot be read or tampered with without the correct key. This tool derives the encryption key from your passphrase using PBKDF2-SHA256 with a random salt and IV, following security best practices. Everything runs locally via the Web Crypto API — your plaintext, ciphertext, and passphrase are never transmitted to any server.",
     howToUse: [
@@ -668,7 +668,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/rsa": {
-    title: "RSA Sign/Verify FAQ",
+    title: "RSA Sign & Verify FAQ",
     about:
       "Sign messages with an RSA private key and verify signatures with the corresponding public key, all in your browser. RSA digital signatures provide authentication and non-repudiation — proving that a message was created by the holder of a specific private key and was not altered in transit. This tool accepts PEM-encoded keys (PKCS#8 for private, SPKI for public) and uses the Web Crypto API for all operations. Your private keys and messages never leave your device.",
     howToUse: [
@@ -706,7 +706,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/url": {
-    title: "URL Encoder/Decoder FAQ",
+    title: "URL Encoder & Decoder FAQ",
     about:
       "Encode and decode URL components using percent-encoding, the standard mechanism for representing special characters in URLs. When building API requests, form submissions, query strings, or redirect URLs, special characters like spaces, ampersands, and equals signs must be percent-encoded to be transmitted correctly. This tool supports both full URI encoding (preserving URL structure) and component encoding (encoding all reserved characters). All encoding and decoding runs locally in your browser.",
     howToUse: [
@@ -944,7 +944,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/escape": {
-    title: "String Escape FAQ",
+    title: "String Escape & Unescape FAQ",
     about:
       "Escape and unescape strings for HTML, JSON, URLs, and regular expressions. String escaping converts special characters into safe representations for a target context — preventing injection attacks, encoding issues, and syntax errors. Developers need escaping when building HTML templates, constructing JSON strings, embedding values in URLs, or writing regex patterns with literal special characters. This tool handles all four major escaping contexts in both directions, running entirely in your browser.",
     howToUse: [
@@ -1058,7 +1058,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/time/cron": {
-    title: "Cron Parser FAQ",
+    title: "Cron Expression Parser FAQ",
     about:
       "Parse and build cron expressions with a human-readable description and a preview of upcoming execution times. Cron expressions define recurring schedules in Unix cron jobs, CI/CD pipelines, Kubernetes CronJobs, cloud scheduler services, and task automation systems. This tool accepts standard five-field cron expressions (minute, hour, day-of-month, month, day-of-week), translates them to plain English, and calculates the next scheduled run times from the current moment. All parsing runs locally in your browser.",
     howToUse: [
@@ -1173,7 +1173,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/base58": {
-    title: "Base58/Base58Check FAQ",
+    title: "Base58 Encoder & Decoder FAQ",
     about:
       "Encode and decode data using Base58 and Base58Check, the encoding schemes designed for Bitcoin addresses and other cryptocurrency applications. Base58 uses a 58-character alphabet that omits visually ambiguous characters (0, O, I, l) to reduce transcription errors. Base58Check adds a 4-byte checksum (from double SHA-256) for integrity validation, ensuring that addresses and keys can be verified before use. This tool supports both plain Base58 and Base58Check modes, running entirely in your browser.",
     howToUse: [
@@ -1287,7 +1287,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/encode/tls-cert": {
-    title: "TLS Certificate Viewer FAQ",
+    title: "TLS Certificate Decoder FAQ",
     about:
       "Inspect PEM-encoded TLS/SSL certificates to view subject, issuer, validity period, Subject Alternative Names (SANs), key usage, and SHA-256 fingerprints. TLS certificates are fundamental to HTTPS security, and developers frequently need to inspect them when debugging SSL errors, validating certificate chains, checking expiration dates, or verifying SANs match expected domains. This viewer parses X.509 certificates locally in your browser — your certificate data is never sent to a server.",
     howToUse: [
@@ -1386,7 +1386,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/pdf/encrypt": {
-    title: "PDF Password Protector FAQ",
+    title: "Password Protect PDF FAQ",
     about:
       "Add password protection to a PDF entirely inside your browser. Choose a password, optionally restrict printing, copying, editing and commenting, and the tool writes an encrypted copy that no reader will open without the password. Encryption runs through a WebAssembly build of qpdf, the long-standing open-source PDF toolkit, executing in a Web Worker on your own device. Most online PDF protection services upload your file to a server, which means handing a confidential document to a third party and trusting them with the password you chose for it. This tool transmits neither. The default is AES-256, the strongest encryption the PDF format defines, with AES-128 available when a document has to open in much older software.",
     howToUse: [
@@ -1452,7 +1452,7 @@ export const TOOL_FAQ_BY_PATH: Record<string, ToolSeoFaqSection> = {
     ],
   },
   "/tools/pdf/split": {
-    title: "PDF Splitter FAQ",
+    title: "Split PDF FAQ",
     about:
       "Split a PDF entirely inside your browser. Pull a selection of pages into a single new document, or cut the whole file into fixed-size pieces and download them individually or as one archive. Splitting runs through a WebAssembly build of qpdf, the long-standing open-source PDF toolkit, executing in a Web Worker on your own device. Most online PDF splitters upload your file to a server, which means handing contracts, statements, medical records and other confidential documents to a third party purely to cut them up. This tool never transmits them. Page selections accept ranges, lists, exclusions and positions counted from the end, and the number of pages a selection produces is shown before anything runs.",
     howToUse: [

@@ -80,7 +80,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "hash",
   },
   {
-    name: "Password Generator",
+    name: "Strong Password Generator",
     description: "Cryptographically secure random passwords",
     href: "/tools/ids/password",
     available: true,
@@ -118,7 +118,7 @@ export const toolDefinitions: ToolDefinition[] = [
 
   // ── Encode / Decode ──
   {
-    name: "Base64 Encoder/Decoder",
+    name: "Base64 Encoder & Decoder",
     description: "Encode and decode Base64 for text and files",
     href: "/tools/encode/base64",
     available: true,
@@ -130,7 +130,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "code2",
   },
   {
-    name: "Base32 Encoder/Decoder",
+    name: "Base32 Encoder & Decoder",
     description: "Encode and decode RFC 4648 Base32",
     href: "/tools/encode/base32",
     available: true,
@@ -142,7 +142,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "calculator",
   },
   {
-    name: "Base58 Encoder/Decoder",
+    name: "Base58 Encoder & Decoder",
     description: "Encode/decode Base58 and Base58Check",
     href: "/tools/encode/base58",
     available: true,
@@ -154,7 +154,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "calculator",
   },
   {
-    name: "Hex Encoder/Decoder",
+    name: "Hex Encoder & Decoder",
     description: "Convert between text and hex",
     href: "/tools/encode/hex",
     available: true,
@@ -166,7 +166,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "heading2",
   },
   {
-    name: "URL Encoder/Decoder",
+    name: "URL Encoder & Decoder",
     description: "Encode and decode URL components",
     href: "/tools/encode/url",
     available: true,
@@ -190,7 +190,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "link2",
   },
   {
-    name: "String Escape/Unescape",
+    name: "String Escape & Unescape",
     description: "HTML, JSON, URL, regex escaping",
     href: "/tools/encode/escape",
     available: true,
@@ -228,7 +228,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "fingerprint",
   },
   {
-    name: "CRC32 Checksum",
+    name: "CRC32 Checksum Calculator",
     description: "Fast checksums for text and files",
     href: "/tools/encode/crc32",
     available: true,
@@ -240,7 +240,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "hash",
   },
   {
-    name: "AES-GCM Encryption",
+    name: "AES Encryption & Decryption",
     description: "Encrypt/decrypt text and files",
     href: "/tools/encode/aes",
     available: true,
@@ -252,7 +252,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "lock",
   },
   {
-    name: "RSA Sign/Verify",
+    name: "RSA Sign & Verify",
     description: "Sign and verify with PEM keys",
     href: "/tools/encode/rsa",
     available: true,
@@ -290,7 +290,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "filePdf",
   },
   {
-    name: "PDF Password Protector",
+    name: "Password Protect PDF",
     description: "Add a password and permissions to a PDF",
     href: "/tools/pdf/encrypt",
     available: true,
@@ -314,7 +314,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "layerGroup",
   },
   {
-    name: "PDF Splitter",
+    name: "Split PDF",
     description: "Extract pages or cut a PDF into smaller files",
     href: "/tools/pdf/split",
     available: true,
@@ -442,7 +442,7 @@ export const toolDefinitions: ToolDefinition[] = [
 
   // ── Time ──
   {
-    name: "Timestamp Converter",
+    name: "Unix Timestamp Converter",
     description: "Convert Unix timestamps to readable dates",
     href: "/tools/time/timestamp",
     available: true,
@@ -454,7 +454,7 @@ export const toolDefinitions: ToolDefinition[] = [
     icon: "clock",
   },
   {
-    name: "Cron Expression Parser",
+    name: "Cron Expression Parser & Builder",
     description: "Human-readable cron with next runs",
     href: "/tools/time/cron",
     available: true,

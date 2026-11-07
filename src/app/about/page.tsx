@@ -4,7 +4,7 @@ import { GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
 import { toolCategories, toolDefinitions } from "@/lib/tools";
 
 export const metadata: Metadata = {
-  title: "About SuperTools | SuperTools",
+  title: "About | SuperTools",
   description:
     "What SuperTools is, who builds it, and why every tool runs in your browser instead of on a server. No accounts, no uploads, no tracking of your input.",
   alternates: { canonical: "/about" },
@@ -31,7 +31,7 @@ export default function AboutPage() {
       "@type": "Organization",
       name: "SuperTools",
       url: siteUrl,
-      logo: `${siteUrl}/icon.svg`,
+      logo: `${siteUrl}/logo.png`,
       description:
         "Privacy-first browser developer utilities with client-side processing.",
       sameAs: [GITHUB_REPO_URL],
@@ -133,6 +133,7 @@ export default function AboutPage() {
           <div className="flex flex-wrap gap-2">
             {toolCategories.map((category) => (
               <Link
+                prefetch={false}
                 key={category.slug}
                 href={`/tools/category/${category.slug}`}
                 className="inline-flex min-h-8 items-center rounded-full border border-border bg-background px-3 text-[12px] font-medium text-muted-foreground transition-colors hover:border-primary/50 hover:text-foreground"

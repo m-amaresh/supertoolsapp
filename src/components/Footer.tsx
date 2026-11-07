@@ -34,6 +34,7 @@ export function Footer() {
               {toolCategories.map((category) => (
                 <li key={category.slug}>
                   <Link
+                    prefetch={false}
                     href={`/tools/category/${category.slug}`}
                     className="inline-flex min-h-6 items-center text-[13px] text-muted-foreground transition-colors hover:text-foreground"
                   >

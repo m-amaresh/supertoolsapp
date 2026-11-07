@@ -126,7 +126,7 @@ export default function TimestampConverter() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Timestamp Converter"
+        title="Unix Timestamp Converter"
         description="Convert between Unix timestamps and human-readable dates"
       />
 

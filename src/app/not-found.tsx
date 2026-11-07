@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 export const metadata: Metadata = {
   title: "Page Not Found - SuperTools",
   robots: { index: false, follow: false },
+  // Don't inherit the root layout's canonical ("/") on missing routes.
+  alternates: { canonical: null },
 };
 
 export default function NotFound() {

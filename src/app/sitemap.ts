@@ -1,43 +1,25 @@
 import type { MetadataRoute } from "next";
+import { lastModifiedFor } from "@/lib/last-modified";
 import { getSiteUrl } from "@/lib/site";
 import { toolCategories, toolDefinitions } from "@/lib/tools";
 
+// Google ignores <changefreq> and <priority>; <lastmod> is what it uses to
+// decide when to recrawl, so every entry carries an honest one.
 export default function sitemap(): MetadataRoute.Sitemap {
   const siteUrl = getSiteUrl();
 
-  const staticRoutes: MetadataRoute.Sitemap = [
-    {
-      url: `${siteUrl}/`,
-      changeFrequency: "weekly",
-      priority: 1,
-    },
-    {
-      url: `${siteUrl}/about`,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${siteUrl}/privacy`,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
+  const paths = [
+    "/",
+    "/about",
+    "/privacy",
+    ...toolCategories.map((category) => `/tools/category/${category.slug}`),
+    ...toolDefinitions
+      .filter((tool) => tool.available)
+      .map((tool) => tool.href),
   ];
 
-  const categoryRoutes: MetadataRoute.Sitemap = toolCategories.map(
-    (category) => ({
-      url: `${siteUrl}/tools/category/${category.slug}`,
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    }),
-  );
-
-  const toolRoutes: MetadataRoute.Sitemap = toolDefinitions
-    .filter((tool) => tool.available)
-    .map((tool) => ({
-      url: `${siteUrl}${tool.href}`,
-      changeFrequency: "monthly" as const,
-      priority: 0.8,
-    }));
-
-  return [...staticRoutes, ...categoryRoutes, ...toolRoutes];
+  return paths.map((path) => ({
+    url: `${siteUrl}${path}`,
+    lastModified: lastModifiedFor(path),
+  }));
 }

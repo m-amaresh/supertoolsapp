@@ -155,7 +155,7 @@ export default function PasswordGenerator() {
   return (
     <ToolPage>
       <ToolHeader
-        title="Password Generator"
+        title="Strong Password Generator"
         description="Cryptographically secure generator using Web Crypto with unbiased random sampling"
       />
 

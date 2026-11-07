@@ -14,7 +14,8 @@ interface SeoFaqProps {
 }
 
 // Renders an about section, how-to steps, and FAQ items as visible content,
-// injecting JSON-LD schemas (FAQPage + HowTo) for search engine rich results.
+// with FAQPage JSON-LD. Google no longer shows HowTo rich results, so the
+// how-to steps stay visible on the page without a HowTo schema.
 export function SeoFaq({
   title,
   about,
@@ -37,28 +38,9 @@ export function SeoFaq({
     })),
   };
 
-  const howToSchema =
-    howToUse && howToUse.length > 0
-      ? {
-          "@context": "https://schema.org",
-          "@type": "HowTo",
-          name: `How to use ${toolName}`,
-          step: howToUse.map((text, i) => ({
-            "@type": "HowToStep",
-            position: i + 1,
-            text,
-          })),
-        }
-      : null;
-
   return (
     <section className={cn("mt-6 space-y-4", className)} aria-label={title}>
       <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
-      {howToSchema && (
-        <script type="application/ld+json">
-          {JSON.stringify(howToSchema)}
-        </script>
-      )}
 
       {about && (
         <div className="glass-panel rounded-xl border border-border p-4 sm:p-5">
