@@ -10,8 +10,14 @@ import {
 
 export type AesTextEncoding = "utf8" | "latin1" | "hex";
 
+/**
+ * v2 authenticates every field except `ct` as AES-GCM additional data, so a
+ * changed name, type, salt or iteration count fails decryption. v1 payloads
+ * (no additional data) still decrypt, but their name/type were never
+ * authenticated.
+ */
 export interface AesPayload {
-  v: 1;
+  v: 1 | 2;
   alg: "A256GCM";
   kdf: "PBKDF2-SHA256";
   it: number;
@@ -27,6 +33,41 @@ const MIN_PBKDF2_ITERATIONS = 100_000;
 const MAX_PBKDF2_ITERATIONS = 1_000_000;
 const MAX_B64URL_FIELD_LENGTH = 64 * 1024 * 1024;
 const MAX_METADATA_LENGTH = 512;
+
+// Canonical encoding of the authenticated header fields. A fixed-order array
+// keeps it independent of how the JSON object was written or parsed.
+function additionalData(payload: AesPayload): ArrayBuffer {
+  return toArrayBuffer(
+    new TextEncoder().encode(
+      JSON.stringify([
+        payload.v,
+        payload.alg,
+        payload.kdf,
+        payload.it,
+        payload.salt,
+        payload.iv,
+        payload.name ?? null,
+        payload.type ?? null,
+      ]),
+    ),
+  );
+}
+
+function boundedMetadata(value: unknown): string | undefined {
+  return typeof value === "string" && value.length <= MAX_METADATA_LENGTH
+    ? value
+    : undefined;
+}
+
+function gcmParams(payload: AesPayload, iv: Uint8Array): AesGcmParams {
+  return payload.v === 2
+    ? {
+        name: "AES-GCM",
+        iv: toArrayBuffer(iv),
+        additionalData: additionalData(payload),
+      }
+    : { name: "AES-GCM", iv: toArrayBuffer(iv) };
+}
 
 export function textToBytes(
   input: string,
@@ -108,22 +149,29 @@ export async function encryptBytesAesGcm(
   const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
   const key = await deriveKey(passphrase, salt, iterations);
 
-  const encrypted = await subtle.encrypt(
-    { name: "AES-GCM", iv: toArrayBuffer(iv) },
-    key,
-    toArrayBuffer(plaintext),
-  );
-
-  return {
-    v: 1,
+  const header: AesPayload = {
+    v: 2,
     alg: "A256GCM",
     kdf: "PBKDF2-SHA256",
     it: iterations,
     salt: base64ToBase64Url(bytesToBase64(salt)),
     iv: base64ToBase64Url(bytesToBase64(iv)),
+    ct: "",
+    // Parsing drops over-long metadata, so omit it here too; otherwise the
+    // authenticated data would differ and a genuine payload could not decrypt.
+    name: boundedMetadata(options.name),
+    type: boundedMetadata(options.type),
+  };
+
+  const encrypted = await subtle.encrypt(
+    gcmParams(header, iv),
+    key,
+    toArrayBuffer(plaintext),
+  );
+
+  return {
+    ...header,
     ct: base64ToBase64Url(bytesToBase64(new Uint8Array(encrypted))),
-    name: options.name,
-    type: options.type,
   };
 }
 
@@ -138,7 +186,7 @@ export async function decryptPayloadAesGcm(
   }
 
   if (
-    payload.v !== 1 ||
+    (payload.v !== 1 && payload.v !== 2) ||
     payload.alg !== "A256GCM" ||
     payload.kdf !== "PBKDF2-SHA256"
   ) {
@@ -178,7 +226,7 @@ export async function decryptPayloadAesGcm(
   let decrypted: ArrayBuffer;
   try {
     decrypted = await subtle.decrypt(
-      { name: "AES-GCM", iv: toArrayBuffer(iv) },
+      gcmParams(payload, iv),
       key,
       toArrayBuffer(ciphertext),
     );
@@ -232,7 +280,7 @@ function validatePayloadShape(value: unknown): AesPayload {
     /^[A-Za-z0-9\-_]+$/.test(v);
 
   if (
-    payload.v !== 1 ||
+    (payload.v !== 1 && payload.v !== 2) ||
     payload.alg !== "A256GCM" ||
     payload.kdf !== "PBKDF2-SHA256" ||
     !Number.isInteger(payload.it) ||
@@ -243,26 +291,15 @@ function validatePayloadShape(value: unknown): AesPayload {
     throw new Error("Invalid encrypted payload format");
   }
 
-  const name =
-    typeof payload.name === "string" &&
-    payload.name.length <= MAX_METADATA_LENGTH
-      ? payload.name
-      : undefined;
-  const type =
-    typeof payload.type === "string" &&
-    payload.type.length <= MAX_METADATA_LENGTH
-      ? payload.type
-      : undefined;
-
   return {
-    v: 1,
+    v: payload.v as 1 | 2,
     alg: "A256GCM",
     kdf: "PBKDF2-SHA256",
     it: payload.it as number,
     salt: payload.salt as string,
     iv: payload.iv as string,
     ct: payload.ct as string,
-    name,
-    type,
+    name: boundedMetadata(payload.name),
+    type: boundedMetadata(payload.type),
   };
 }
