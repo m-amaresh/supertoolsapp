@@ -1,4 +1,4 @@
-import { bytesToText, textToBytes, toArrayBuffer } from "./bytes";
+import { bytesToText, sha256, textToBytes } from "./bytes";
 
 export type Base58TextEncoding = "utf8" | "latin1" | "hex";
 export type Base58Variant = "base58" | "base58check";
@@ -22,15 +22,6 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
     if (a[i] !== b[i]) return false;
   }
   return true;
-}
-
-async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error("Web Crypto API is not available in this environment");
-  }
-  const buffer = await subtle.digest("SHA-256", toArrayBuffer(bytes));
-  return new Uint8Array(buffer);
 }
 
 // Base58Check checksum: first 4 bytes of SHA-256(SHA-256(payload)).

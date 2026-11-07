@@ -1,4 +1,4 @@
-import { base64ToBytes, bytesToHex, toArrayBuffer } from "./bytes";
+import { base64ToBytes, bytesToHex, sha256 } from "./bytes";
 
 interface Asn1Node {
   tagClass: number;
@@ -58,6 +58,11 @@ const ALGORITHM_NAME_MAP: Record<string, string> = {
   "1.2.840.10045.4.3.2": "ecdsa-with-SHA256",
   "1.2.840.10045.4.3.3": "ecdsa-with-SHA384",
   "1.2.840.10045.4.3.4": "ecdsa-with-SHA512",
+  "1.2.840.113549.1.1.10": "rsassaPss",
+  "1.3.101.110": "X25519",
+  "1.3.101.111": "X448",
+  "1.3.101.112": "Ed25519",
+  "1.3.101.113": "Ed448",
 };
 
 function decodeAscii(bytes: Uint8Array): string {
@@ -160,29 +165,80 @@ function parseAsn1Node(data: Uint8Array, offset: number): Asn1Node {
   return node;
 }
 
-// Decode a DER-encoded OID. The first byte encodes two arcs (first*40 + second).
-// Subsequent arcs use base-128 with a continuation high bit.
+// Decode a DER-encoded OID (X.690 §8.19). Every subidentifier, including the
+// first, is base-128 with a continuation high bit; the first one packs the
+// first two arcs as first*40 + second, where second may exceed 39 under arc 2
+// (e.g. 2.999). BigInt keeps very large arcs such as 2.25.<UUID> exact.
 function parseOid(bytes: Uint8Array): string {
-  if (bytes.length === 0) return "";
-  const first = bytes[0];
-  const parts = [Math.floor(first / 40), first % 40];
-  let value = 0;
-  let pending = false;
-  for (let i = 1; i < bytes.length; i++) {
-    const byte = bytes[i];
-    value = (value << 7) | (byte & 0x7f);
+  const subidentifiers: bigint[] = [];
+  let value = 0n;
+  for (const byte of bytes) {
+    value = (value << 7n) | BigInt(byte & 0x7f);
     if ((byte & 0x80) === 0) {
-      parts.push(value);
-      value = 0;
-      pending = false;
-    } else {
-      pending = true;
+      subidentifiers.push(value);
+      value = 0n;
     }
   }
-  if (pending) {
-    parts.push(value);
+  const [first, ...rest] = subidentifiers;
+  if (first === undefined) return "";
+  const head = first < 40n ? 0n : first < 80n ? 1n : 2n;
+  return [head, first - head * 40n, ...rest].join(".");
+}
+
+// Key sizes as OpenSSL reports them, for algorithms whose size is fixed by
+// the curve rather than readable from the key bytes.
+const CURVE_BITS: Record<string, number> = {
+  "1.2.840.10045.3.1.1": 192, // P-192
+  "1.3.132.0.33": 224, // P-224
+  "1.2.840.10045.3.1.7": 256, // P-256
+  "1.3.132.0.10": 256, // secp256k1
+  "1.3.132.0.34": 384, // P-384
+  "1.3.132.0.35": 521, // P-521
+  "1.3.36.3.3.2.8.1.1.7": 256, // brainpoolP256r1
+  "1.3.36.3.3.2.8.1.1.11": 384, // brainpoolP384r1
+  "1.3.36.3.3.2.8.1.1.13": 512, // brainpoolP512r1
+};
+const FIXED_KEY_BITS: Record<string, number> = {
+  "1.3.101.110": 253, // X25519
+  "1.3.101.111": 448, // X448
+  "1.3.101.112": 256, // Ed25519
+  "1.3.101.113": 456, // Ed448
+};
+const RSA_OIDS = new Set(["1.2.840.113549.1.1.1", "1.2.840.113549.1.1.10"]);
+const EC_PUBLIC_KEY_OID = "1.2.840.10045.2.1";
+
+function unsignedBitLength(bytes: Uint8Array): number {
+  let i = 0;
+  while (i < bytes.length && bytes[i] === 0) i++;
+  if (i === bytes.length) return 0;
+  return (bytes.length - i - 1) * 8 + (32 - Math.clz32(bytes[i]));
+}
+
+// The key size a reader expects next to the algorithm (the RSA modulus
+// length, the EC curve size), not the size of the encoded BIT STRING.
+// Returns null when the size can't be determined.
+function publicKeyBits(
+  algorithmOid: string,
+  parameters: Asn1Node | undefined,
+  bitString: Uint8Array,
+  der: Uint8Array,
+): number | null {
+  if (algorithmOid in FIXED_KEY_BITS) return FIXED_KEY_BITS[algorithmOid];
+  if (algorithmOid === EC_PUBLIC_KEY_OID) {
+    if (parameters?.tag !== 0x06) return null;
+    return CURVE_BITS[parseOid(asn1Value(parameters, der))] ?? null;
   }
-  return parts.join(".");
+  if (RSA_OIDS.has(algorithmOid) && bitString.length > 1) {
+    try {
+      // RSAPublicKey ::= SEQUENCE { modulus INTEGER, publicExponent INTEGER }
+      const key = bitString.subarray(1);
+      const modulus = parseAsn1Node(key, 0).children[0];
+      return modulus ? unsignedBitLength(asn1Value(modulus, key)) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function asn1Value(node: Asn1Node, data: Uint8Array): Uint8Array {
@@ -339,15 +395,6 @@ function formatFingerprint(bytes: Uint8Array): string {
   return hex.match(/.{1,2}/g)?.join(":") ?? "";
 }
 
-async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
-  const subtle = globalThis.crypto?.subtle;
-  if (!subtle) {
-    throw new Error("Web Crypto API is not available in this environment");
-  }
-  const digest = await subtle.digest("SHA-256", toArrayBuffer(bytes));
-  return new Uint8Array(digest);
-}
-
 // Parse the DER-encoded TBSCertificate structure and extract all display fields.
 // Walks the fixed-order children: version, serial, algorithm, issuer, validity,
 // subject, SPKI, and optional extensions (for SANs).
@@ -415,20 +462,21 @@ function parseCertificateDer(
     ? parseTime(validityNode.children[1], der)
     : null;
 
-  const spkiAlgNode = subjectPublicKeyInfoNode.children[0]?.children[0];
+  const spkiAlgorithm = subjectPublicKeyInfoNode.children[0];
+  const spkiAlgNode = spkiAlgorithm?.children[0];
   const publicKeyAlgorithmOid = spkiAlgNode
     ? parseOid(asn1Value(spkiAlgNode, der))
     : "";
 
   const publicKeyBitString = subjectPublicKeyInfoNode.children[1];
-  let publicKeyBitLength: number | null = null;
-  if (publicKeyBitString) {
-    const bytes = asn1Value(publicKeyBitString, der);
-    if (bytes.length > 0) {
-      const unusedBits = bytes[0];
-      publicKeyBitLength = Math.max(0, (bytes.length - 1) * 8 - unusedBits);
-    }
-  }
+  const publicKeyBitLength = publicKeyBitString
+    ? publicKeyBits(
+        publicKeyAlgorithmOid,
+        spkiAlgorithm?.children[1],
+        asn1Value(publicKeyBitString, der),
+        der,
+      )
+    : null;
 
   const subjectAltNames = parseExtensions(tbsCertificate, der);
 

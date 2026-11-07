@@ -100,3 +100,11 @@ export function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   new Uint8Array(buffer).set(bytes);
   return buffer;
 }
+
+export async function sha256(bytes: Uint8Array): Promise<Uint8Array> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) {
+    throw new Error("Web Crypto API is not available in this environment");
+  }
+  return new Uint8Array(await subtle.digest("SHA-256", toArrayBuffer(bytes)));
+}
