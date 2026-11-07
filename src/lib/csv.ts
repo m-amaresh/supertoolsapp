@@ -155,16 +155,31 @@ function rowsToObjectRecords(rows: string[][], hasHeader: boolean): unknown[] {
   }
 
   // Rows wider than the header get column_N keys rather than losing cells.
-  const width = Math.max(...rows.map((row) => row.length));
-  const headers = Array.from({ length: width }, (_, index) =>
-    normalizeHeaderCell(rows[0][index] ?? "", index),
+  // A loop, not Math.max(...rows), which overflows the argument limit on
+  // inputs with ~100k+ rows.
+  let width = 0;
+  for (const row of rows) width = Math.max(width, row.length);
+
+  // Explicit header names are reserved up front, so neither a generated
+  // column_N nor a _N duplicate suffix can take a name a real column uses.
+  const reserved = new Set(
+    rows[0].map((cell) => cell.trim()).filter((cell) => cell.length > 0),
   );
-  const collisions = new Map<string, number>();
-  const stableHeaders = headers.map((header) => {
-    const count = collisions.get(header) ?? 0;
-    collisions.set(header, count + 1);
-    if (count === 0) return header;
-    return `${header}_${count + 1}`;
+  const used = new Set<string>();
+  const stableHeaders = Array.from({ length: width }, (_, index) => {
+    const header = normalizeHeaderCell(rows[0][index] ?? "", index);
+    const generated = !(rows[0][index] ?? "").trim();
+    let name = header;
+    let suffix = 2;
+    // A real header keeps its own name; anything else must avoid reserved ones.
+    while (
+      used.has(name) ||
+      ((generated || name !== header) && reserved.has(name))
+    ) {
+      name = `${header}_${suffix++}`;
+    }
+    used.add(name);
+    return name;
   });
 
   // Object.fromEntries keeps a "__proto__" header as an ordinary key.

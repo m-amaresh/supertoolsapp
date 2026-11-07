@@ -86,4 +86,26 @@ describe("csv", () => {
     });
     expect(output).toBe('[{"__proto__":"x","name":"y"}]');
   });
+
+  it("never lets a generated or suffixed header overwrite a real one", () => {
+    const convert = (input: string) =>
+      convertDelimitedToJson(input, {
+        format: "csv",
+        hasHeader: true,
+        indent: 0,
+      });
+    expect(convert("column_3,column_3_2\na,b,c")).toBe(
+      '[{"column_3":"a","column_3_2":"b","column_3_3":"c"}]',
+    );
+    expect(convert("a,a,a_2\n1,2,3")).toBe('[{"a":"1","a_3":"2","a_2":"3"}]');
+  });
+
+  it("converts inputs with more rows than the argument limit", () => {
+    const output = convertDelimitedToJson(`header\n${"x\n".repeat(150_000)}`, {
+      format: "csv",
+      hasHeader: true,
+      indent: 0,
+    });
+    expect(JSON.parse(output)).toHaveLength(150_000);
+  });
 });
