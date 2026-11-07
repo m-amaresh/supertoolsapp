@@ -84,3 +84,25 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
 }
+
+export const NOT_A_PDF_MESSAGE =
+  "This file is not a PDF. Check that you selected the right file.";
+
+/** qpdf's `--show-encryption` line for an unencrypted input. */
+export function isNotEncrypted(output: string): boolean {
+  return /file is not encrypted/i.test(output);
+}
+
+/** The empty-file and size-limit checks every single-file PDF tool applies. */
+export function pdfSizeProblem(
+  size: number,
+): { code: "empty-file" | "too-large"; message: string } | null {
+  if (size === 0) return { code: "empty-file", message: "That file is empty." };
+  if (size > MAX_PDF_BYTES) {
+    return {
+      code: "too-large",
+      message: `That file is ${formatBytes(size)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
+    };
+  }
+  return null;
+}

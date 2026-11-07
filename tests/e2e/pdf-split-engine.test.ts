@@ -167,6 +167,10 @@ describe("pdf-split engine: the parser agrees with qpdf", () => {
     "2-4,1",
     "1-z,x2-3",
     "1-6,x2,x5",
+    // Exclusions after several groups: does x2 reach back past 8-10?
+    "1-5,8-10,x2",
+    "1-3,x2,5-7,x6",
+    "2,1-3,x2",
     "z-1",
     "1-z",
   ];

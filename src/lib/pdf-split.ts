@@ -7,9 +7,12 @@ import {
   declaresEncryption,
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
+  NOT_A_PDF_MESSAGE,
+  pdfSizeProblem,
   redactQpdfSecrets,
   stripProgramPrefix,
 } from "./qpdf";
@@ -18,6 +21,7 @@ export {
   declaresEncryption,
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
@@ -115,7 +119,9 @@ export interface PdfSplitWorkerResponse {
  * - `5` a single page, 1-based
  * - `2-6` an ascending run; `6-2` descends, and the order is kept
  * - `z` the last page, `r2` the second from last
- * - `x2-3` removes pages from what has been selected so far
+ * - `x2-3` removes pages from the inclusion just before it, not from the whole
+ *   selection: `1-5,8-10,x2` keeps page 2. Consecutive exclusions
+ *   (`1-6,x2,x5`) all apply to that same inclusion
  * - terms are comma separated and evaluated left to right
  *
  * Three behaviours matter and are deliberately reproduced: pages are **not**
@@ -152,7 +158,9 @@ export function parsePageRange(
 
   // Whitespace is allowed anywhere: people type "1-5, 8", not "1-5,8".
   const terms = trimmed.replace(/\s+/g, "").split(",");
-  let selected: number[] = [];
+  const selected: number[] = [];
+  // Pages of the latest inclusion, which any following exclusions trim.
+  let group: number[] = [];
 
   for (const [index, term] of terms.entries()) {
     if (term.length === 0) {
@@ -176,11 +184,13 @@ export function parsePageRange(
 
     if (isExclusion) {
       const drop = new Set(resolved.pages);
-      selected = selected.filter((page) => !drop.has(page));
+      group = group.filter((page) => !drop.has(page));
     } else {
-      selected = selected.concat(resolved.pages);
+      selected.push(...group);
+      group = resolved.pages;
     }
   }
+  selected.push(...group);
 
   if (selected.length === 0) {
     return fail(
@@ -450,10 +460,7 @@ export function classifyQpdfError(
     lower.includes("can't find pdf header") ||
     lower.includes("not a pdf file")
   ) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   if (
@@ -475,11 +482,6 @@ export function classifyQpdfError(
       ? stripProgramPrefix(firstLine)
       : `qpdf exited with code ${exitCode}.`,
   );
-}
-
-/** qpdf prints this for a file carrying no protection — the input this tool wants. */
-export function isNotEncrypted(output: string): boolean {
-  return /file is not encrypted/i.test(output);
 }
 
 /** Read the page count out of a `--show-npages` run. */
@@ -606,14 +608,8 @@ export function validateRequestMetadata(
     detail: "",
   });
 
-  if (fileSize === 0) return fail("empty-file", "That file is empty.");
-
-  if (fileSize > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(fileSize)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(fileSize);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   return null;
 }
@@ -627,20 +623,11 @@ export function validateRequest(bytes: Uint8Array): PdfSplitFailure | null {
     detail: "",
   });
 
-  if (bytes.length === 0) return fail("empty-file", "That file is empty.");
-
-  if (bytes.length > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(bytes.length)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(bytes.length);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   if (!looksLikePdf(bytes)) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   return null;

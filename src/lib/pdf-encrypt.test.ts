@@ -230,6 +230,16 @@ describe("pdf-encrypt: password truncation warnings", () => {
     expect(password.length).toBeLessThan(AES128_PASSWORD_BYTES);
     expect(passwordTruncationWarning(password, "aes128")).toContain("48 bytes");
   });
+
+  it("counts PDFDocEncoding bytes for AES-128 when every character fits", () => {
+    // 20 × "é" is 40 UTF-8 bytes but 20 PDFDocEncoding bytes, all of which
+    // AES-128 uses; 33 of them do exceed the limit.
+    expect(passwordTruncationWarning("é".repeat(20), "aes128")).toBeNull();
+    expect(passwordTruncationWarning("€".repeat(32), "aes128")).toBeNull();
+    expect(passwordTruncationWarning("é".repeat(33), "aes128")).toContain(
+      "33 bytes",
+    );
+  });
 });
 
 describe("pdf-encrypt: qpdf error classification", () => {

@@ -80,6 +80,13 @@ describe("pdf-split: page range parsing", () => {
     expect(pagesOf("2-4,1", 10)).toEqual([2, 3, 4, 1]);
   });
 
+  it("applies an exclusion only to the inclusion just before it", () => {
+    // Matches qpdf: x2 trims 8-10, so page 2 from 1-5 survives.
+    expect(pagesOf("1-5,8-10,x2", 10)).toEqual([1, 2, 3, 4, 5, 8, 9, 10]);
+    expect(pagesOf("2,1-3,x2", 10)).toEqual([2, 1, 3]);
+    expect(pagesOf("1-3,x2,5-7,x6", 10)).toEqual([1, 3, 5, 7]);
+  });
+
   it("applies an exclusion to what came before it", () => {
     expect(pagesOf("1-z,x2-3", 5)).toEqual([1, 4, 5]);
   });

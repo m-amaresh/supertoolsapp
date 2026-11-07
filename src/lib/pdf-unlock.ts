@@ -7,9 +7,12 @@
 import {
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
+  NOT_A_PDF_MESSAGE,
+  pdfSizeProblem,
   redactQpdfSecrets,
   stripProgramPrefix,
 } from "./qpdf";
@@ -18,6 +21,7 @@ import {
 export {
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
@@ -158,10 +162,7 @@ export function classifyQpdfError(
     lower.includes("can't find pdf header") ||
     lower.includes("not a pdf file")
   ) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   if (
@@ -194,14 +195,6 @@ export function classifyQpdfError(
       ? stripProgramPrefix(firstLine)
       : `qpdf exited with code ${exitCode}.`,
   );
-}
-
-/**
- * qpdf reports an unencrypted file on a successful (exit 0) run, so this is a
- * distinct case from the failures handled by `classifyQpdfError`.
- */
-export function isNotEncrypted(output: string): boolean {
-  return /file is not encrypted/i.test(output);
 }
 
 /**
@@ -301,16 +294,8 @@ export function validateRequestMetadata(
     message: string,
   ): PdfUnlockFailure => ({ ok: false, code, message, detail: "" });
 
-  if (fileSize === 0) {
-    return fail("empty-file", "That file is empty.");
-  }
-
-  if (fileSize > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(fileSize)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(fileSize);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   if (passwordLength > MAX_PASSWORD_LENGTH) {
     return fail("invalid-password", "That password is unreasonably long.");
@@ -328,26 +313,15 @@ export function validateRequest(
     message: string,
   ): PdfUnlockFailure => ({ ok: false, code, message, detail: "" });
 
-  if (bytes.length === 0) {
-    return fail("empty-file", "That file is empty.");
-  }
-
-  if (bytes.length > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(bytes.length)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(bytes.length);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   if (password.length > MAX_PASSWORD_LENGTH) {
     return fail("invalid-password", "That password is unreasonably long.");
   }
 
   if (!looksLikePdf(bytes)) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   return null;

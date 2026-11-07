@@ -3,9 +3,12 @@
 import {
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
+  NOT_A_PDF_MESSAGE,
+  pdfSizeProblem,
   redactQpdfSecrets,
   stripProgramPrefix,
 } from "./qpdf";
@@ -14,6 +17,7 @@ import {
 export {
   extractWarnings,
   formatBytes,
+  isNotEncrypted,
   isQpdfSuccess,
   looksLikePdf,
   MAX_PDF_BYTES,
@@ -206,6 +210,38 @@ export function buildEncryptArgs(
   return args;
 }
 
+// Characters PDFDocEncoding (ISO 32000-1 Annex D) adds outside Latin-1, at
+// 0x18-0x1F and 0x80-0xA0.
+const PDF_DOC_EXTRA = new Set("˘ˇˆ˙˝˛˚˜•†‡…—–ƒ⁄‹›−‰„“”‘’‚™ﬁﬂŁŒŠŸŽıłœšž€");
+
+function isPdfDocEncodable(char: string): boolean {
+  const code = char.codePointAt(0) ?? 0;
+  if (code >= 0x20 && code <= 0x7e) return true;
+  if (code >= 0xa1 && code <= 0xff && code !== 0xad) return true;
+  return (
+    code === 0x09 || code === 0x0a || code === 0x0d || PDF_DOC_EXTRA.has(char)
+  );
+}
+
+/**
+ * How many bytes of the password the cipher hashes before truncating.
+ *
+ * AES-256 (R6) hashes UTF-8. For AES-128 (R4) qpdf transcodes a password that
+ * fits PDFDocEncoding to one byte per character (checked against the shipped
+ * qpdf: 20 × "é" opens only with all 20 characters), and passes anything else
+ * through as UTF-8.
+ */
+function passwordByteLength(
+  password: string,
+  strength: PdfEncryptionStrength,
+): number {
+  const chars = Array.from(password);
+  if (strength === "aes128" && chars.every(isPdfDocEncodable)) {
+    return chars.length;
+  }
+  return new TextEncoder().encode(password).length;
+}
+
 /** Bytes the PDF format will actually hash for the chosen cipher. */
 export function passwordByteLimit(strength: PdfEncryptionStrength): number {
   return strength === "aes256" ? AES256_PASSWORD_BYTES : AES128_PASSWORD_BYTES;
@@ -222,7 +258,7 @@ export function passwordTruncationWarning(
   password: string,
   strength: PdfEncryptionStrength,
 ): string | null {
-  const bytes = new TextEncoder().encode(password).length;
+  const bytes = passwordByteLength(password, strength);
   const limit = passwordByteLimit(strength);
   if (bytes <= limit) return null;
 
@@ -260,10 +296,7 @@ export function classifyQpdfError(
     lower.includes("can't find pdf header") ||
     lower.includes("not a pdf file")
   ) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   if (
@@ -285,14 +318,6 @@ export function classifyQpdfError(
       ? stripProgramPrefix(firstLine)
       : `qpdf exited with code ${exitCode}.`,
   );
-}
-
-/**
- * qpdf prints this on a successful inspect pass over a file with no
- * protection, which is exactly the input this tool wants.
- */
-export function isNotEncrypted(output: string): boolean {
-  return /file is not encrypted/i.test(output);
 }
 
 /**
@@ -415,16 +440,8 @@ export function validateRequestMetadata(
     message: string,
   ): PdfEncryptFailure => ({ ok: false, code, message, detail: "" });
 
-  if (fileSize === 0) {
-    return fail("empty-file", "That file is empty.");
-  }
-
-  if (fileSize > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(fileSize)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(fileSize);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   if (userPassword.length === 0) {
     return fail(
@@ -459,16 +476,8 @@ export function validateRequest(
     message: string,
   ): PdfEncryptFailure => ({ ok: false, code, message, detail: "" });
 
-  if (bytes.length === 0) {
-    return fail("empty-file", "That file is empty.");
-  }
-
-  if (bytes.length > MAX_PDF_BYTES) {
-    return fail(
-      "too-large",
-      `That file is ${formatBytes(bytes.length)}. The limit is ${formatBytes(MAX_PDF_BYTES)} so the browser tab stays responsive.`,
-    );
-  }
+  const sizeProblem = pdfSizeProblem(bytes.length);
+  if (sizeProblem) return fail(sizeProblem.code, sizeProblem.message);
 
   if (options.userPassword.length === 0) {
     return fail(
@@ -485,10 +494,7 @@ export function validateRequest(
   }
 
   if (!looksLikePdf(bytes)) {
-    return fail(
-      "not-a-pdf",
-      "This file is not a PDF. Check that you selected the right file.",
-    );
+    return fail("not-a-pdf", NOT_A_PDF_MESSAGE);
   }
 
   return null;
