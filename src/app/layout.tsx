@@ -10,7 +10,12 @@ import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { GA_MEASUREMENT_ID, isAnalyticsConfigured } from "@/lib/analytics";
 import { GLOBAL_KEYWORDS } from "@/lib/seo";
-import { getSiteUrl, shouldIndexSite } from "@/lib/site";
+import {
+  AUTHOR_NAME,
+  AUTHOR_URL,
+  getSiteUrl,
+  shouldIndexSite,
+} from "@/lib/site";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,6 +37,8 @@ export const metadata: Metadata = {
     "Fast, privacy-first developer utilities that run 100% in your browser",
   applicationName: "SuperTools",
   category: "Developer Tools",
+  authors: [{ name: AUTHOR_NAME, url: AUTHOR_URL }],
+  creator: AUTHOR_NAME,
   keywords: GLOBAL_KEYWORDS,
   alternates: {
     canonical: "/",

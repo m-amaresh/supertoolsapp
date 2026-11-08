@@ -6,7 +6,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { GLOBAL_KEYWORDS } from "@/lib/seo";
-import { GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
+import { authorSchema, GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
 import {
   featuredTools,
   homeTools,
@@ -59,6 +59,7 @@ export default function Home() {
     description:
       "Privacy-first browser developer utilities with client-side processing.",
     sameAs: [GITHUB_REPO_URL],
+    founder: authorSchema,
   };
 
   const availableToolCount = homeTools.filter((tool) => tool.available).length;

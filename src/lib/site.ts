@@ -10,6 +10,27 @@ export const GITHUB_REPO_URL =
   "https://github.com/m-amaresh/supertoolsapp";
 const PRODUCTION_SITE_URL = "https://www.supertoolsapp.com";
 
+/**
+ * The person behind the site. `AUTHOR_ID` is the exact `@id` amaresh.me gives
+ * its Person entity, so structured data on both sites resolves to one person
+ * (the name is shared with other people, so the id carries the disambiguation).
+ * Keep `sameAs` in line with that site's Person `sameAs`.
+ */
+export const AUTHOR_NAME = "Amaresh Mohapatra";
+export const AUTHOR_URL = "https://www.amaresh.me";
+const AUTHOR_ID = `${AUTHOR_URL}/#person`;
+
+export const authorSchema = {
+  "@type": "Person",
+  "@id": AUTHOR_ID,
+  name: AUTHOR_NAME,
+  url: AUTHOR_URL,
+  sameAs: [
+    "https://www.linkedin.com/in/amaresh23",
+    "https://github.com/m-amaresh",
+  ],
+} as const;
+
 function normalizeUrl(url: string): string {
   return url.endsWith("/") ? url.slice(0, -1) : url;
 }

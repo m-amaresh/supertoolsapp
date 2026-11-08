@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CookiePreferencesButton } from "@/components/CookiePreferencesButton";
 import { isAnalyticsConfigured } from "@/lib/analytics";
-import { GITHUB_REPO_URL } from "@/lib/site";
+import { AUTHOR_NAME, AUTHOR_URL, GITHUB_REPO_URL } from "@/lib/site";
 import { toolCategories } from "@/lib/tools";
 
 // Rendered as a server component and passed into AppShell as a prop, so the
@@ -94,8 +94,16 @@ export function Footer() {
         </div>
 
         <p className="mt-8 border-t border-border pt-5 text-[12px] text-muted-foreground">
-          © {new Date().getFullYear()} SuperTools. Built by Amaresh. Every tool
-          runs client-side.
+          © {new Date().getFullYear()} SuperTools. Built by{" "}
+          <a
+            href={AUTHOR_URL}
+            target="_blank"
+            rel="noopener"
+            className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
+          >
+            {AUTHOR_NAME}
+          </a>
+          . Every tool runs client-side.
         </p>
       </div>
     </footer>

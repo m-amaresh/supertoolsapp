@@ -1,6 +1,6 @@
 import { SeoFaq } from "@/components/SeoFaq";
 import { RelatedTools } from "@/components/tool/RelatedTools";
-import { GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
+import { authorSchema, GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
 import { TOOL_FAQ_BY_PATH } from "@/lib/tool-seo";
 import { toolDefinitions } from "@/lib/tools";
 
@@ -35,6 +35,7 @@ export function ToolSeoFaqServer({ path }: ToolSeoFaqServerProps) {
           logo: `${getSiteUrl()}/logo.png`,
           sameAs: [GITHUB_REPO_URL],
         },
+        author: authorSchema,
       }
     : null;
 

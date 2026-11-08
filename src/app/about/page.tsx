@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GITHUB_REPO_URL, getSiteUrl } from "@/lib/site";
+import {
+  AUTHOR_NAME,
+  AUTHOR_URL,
+  authorSchema,
+  GITHUB_REPO_URL,
+  getSiteUrl,
+} from "@/lib/site";
 import { toolCategories, toolDefinitions } from "@/lib/tools";
 
 export const metadata: Metadata = {
@@ -35,6 +41,7 @@ export default function AboutPage() {
       description:
         "Privacy-first browser developer utilities with client-side processing.",
       sameAs: [GITHUB_REPO_URL],
+      founder: authorSchema,
     },
   };
 
@@ -94,10 +101,19 @@ export default function AboutPage() {
               Who builds it
             </h2>
             <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-              SuperTools is built and maintained by Amaresh as an open source
-              project. The full source, including every tool implementation and
-              its tests, is public — so the claim that nothing is uploaded is
-              something you can verify rather than take on trust.
+              SuperTools is built and maintained by{" "}
+              <a
+                href={AUTHOR_URL}
+                target="_blank"
+                rel="noopener"
+                className="text-foreground underline underline-offset-2 hover:text-primary"
+              >
+                {AUTHOR_NAME}
+              </a>
+              , a cloud and platform architect, as an open source project. The
+              full source, including every tool implementation and its tests, is
+              public — so the claim that nothing is uploaded is something you
+              can verify rather than take on trust.
             </p>
             <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
               <a

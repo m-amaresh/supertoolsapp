@@ -23,7 +23,7 @@ export const TOOL_PAGES_LAST_MODIFIED = "2026-11-07";
  */
 export const PAGE_LAST_MODIFIED: Record<string, string> = {
   "/": "2026-11-07",
-  "/about": "2026-11-07",
+  "/about": "2026-11-08",
   "/privacy": "2026-09-15",
   "/tools/category/generators": "2026-11-07",
   "/tools/category/encode-decode": "2026-11-07",
