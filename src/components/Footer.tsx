@@ -99,7 +99,7 @@ export function Footer() {
             href={AUTHOR_URL}
             target="_blank"
             rel="noopener"
-            className="underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            className="inline-flex min-h-6 items-center underline-offset-2 transition-colors hover:text-foreground hover:underline"
           >
             {AUTHOR_NAME}
           </a>
