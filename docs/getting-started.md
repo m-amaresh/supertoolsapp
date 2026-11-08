@@ -36,17 +36,18 @@ CSS.
 
 - The app runs as a normal Next.js App Router project.
 - Tool payloads are processed client-side.
-- Theme supports three modes: light, dark, and system. System mode tracks the OS preference automatically. Users can cycle between light and dark manually; the preference persists across sessions.
+- Theme supports three modes: light, dark, and system. System mode tracks the OS preference automatically. The header toggle switches between light and dark; the choice persists across sessions.
 
 ## Environment Variables
 
-Local development works without a `.env` file, but production should set:
+Local development works without a `.env` file. Deployments set:
 
-- `NEXT_PUBLIC_SITE_URL`
+- `NEXT_PUBLIC_SITE_URL` — required
+- `NEXT_PUBLIC_GA_MEASUREMENT_ID` — optional; see [Privacy](privacy.md#google-analytics)
 
 ### Why `NEXT_PUBLIC_SITE_URL` Matters
 
-SuperTools uses a shared site URL helper for canonical metadata, sitemap output, robots, and structured data. If production falls back to `http://localhost:3000`, SEO signals will be wrong. Treat this as required in real deployments.
+SuperTools uses a shared site URL helper ([`src/lib/site.ts`](../src/lib/site.ts)) for canonical metadata, sitemap output, robots, and structured data. Locally it falls back to `http://localhost:3100`. On Vercel or in CI a build without it fails on purpose, because a localhost canonical in production would send every SEO signal to the wrong host.
 
 ## Local Validation
 
@@ -68,3 +69,4 @@ pnpm test:e2e
 - [`src/components`](../src/components): shared shell and UI composition
 - [`src/lib`](../src/lib): transformation logic, helpers, and SEO support
 - [`src/hooks`](../src/hooks): shared client hooks
+- [`tests/e2e`](../tests/e2e): browser tests against the production build

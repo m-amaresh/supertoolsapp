@@ -13,7 +13,7 @@ Examples include:
 - JSON, YAML, CSV, and diff input
 - tokens, secrets, ciphertext, and passphrases
 - generated passwords and UUIDs
-- PDF files, the passwords used to unlock them, and the documents combined by the merger
+- PDF files, the passwords used to unlock or protect them, and the documents merged or split
 
 ## What This Promise Does Mean
 
@@ -63,7 +63,7 @@ is **default-denied**:
 - **Being honest about what default-denied still does:** with Consent Mode v2,
   a declined session still sends Google a `page_view`. Inspected on the wire, it
   carries the page URL and title, screen size, language, browser and platform,
-  your IP as with any request, and a client id — *and* the signal `gcs=G100`,
+  your IP as with any request, and a client id — _and_ the signal `gcs=G100`,
   telling Google that both ad and analytics storage were refused. Google uses
   these for aggregate modelling.
 
@@ -72,9 +72,9 @@ is **default-denied**:
   visits to each other. It is not the persistent identifier an accepted session
   gets. But this is a real page view report, not a contentless ping.
 
-  What it never contains is anything you put *into* a tool.
+  What it never contains is anything you put _into_ a tool.
 
-  If you want *no* contact with Google whatsoever, block
+  If you want _no_ contact with Google whatsoever, block
   `googletagmanager.com`; the site is fully functional without it, and every
   tool keeps working.
 - You can change your mind at any time through **Cookie preferences** in the
@@ -89,7 +89,7 @@ execution on every page.
 ### The boundary that matters
 
 Analytics sees page views: which tool pages are visited, and roughly from
-where. It never sees what you put *into* a tool. Tool payloads — text, files,
+where. It never sees what you put _into_ a tool. Tool payloads — text, files,
 keys, passwords, PDFs — are processed in your browser and are not sent
 anywhere, whether or not you accept cookies. Accepting analytics does not
 change what a tool does with your data.
@@ -99,11 +99,12 @@ be logged as analytics data.
 
 ## The PDF Tools
 
-The PDF password remover and the PDF merger are worth calling out, because this
-is the category where hosted tools most often claim privacy they do not deliver.
-Most online PDF unlockers upload the document *and its password* to a server,
-and most online mergers upload every file you want combined — contracts,
-statements, scans — purely to staple them together.
+The four PDF tools — password remover, password protector, merger and
+splitter — are worth calling out, because this is the category where hosted
+tools most often claim privacy they do not deliver. Most online PDF unlockers
+and protectors upload the document _and its password_ to a server, and most
+online mergers and splitters upload every file — contracts, statements,
+scans — purely to staple pages together or pull them apart.
 
 These do not. Each file is read with `File.arrayBuffer()`, transferred into a
 Web Worker, and processed there by a WebAssembly build of qpdf. Specifically:
@@ -116,7 +117,10 @@ Web Worker, and processed there by a WebAssembly build of qpdf. Specifically:
 - `qpdf.wasm` is served same-origin from `public/pdf/`, so `connect-src 'self'`
   remains unchanged and there is no CDN in the path
 
-Once the page and the engine have loaded, both tools work with no network
+Page previews are drawn by pdf.js, whose worker is also served same-origin,
+from `public/pdfjs/`.
+
+Once the page and the engine have loaded, every PDF tool works with no network
 connection at all.
 
 ## Browser Storage

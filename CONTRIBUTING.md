@@ -20,13 +20,15 @@ SuperTools is intentionally opinionated. The product is small, but the standards
 
 ## Project Structure
 
-| Directory | Contents |
-|---|---|
-| `src/app/tools/` | Tool route pages — state management and UI orchestration |
-| `src/components/` | App shell, header, sidebar, shared tool scaffold |
-| `src/components/ui/` | shadcn/ui primitives (button, input, select, checkbox, etc.) |
-| `src/hooks/` | Shared client hooks (useToolState, useClipboard) |
-| `src/lib/` | Pure logic — parsers, encoders, generators, validators, SEO helpers |
+| Directory            | Contents                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/app/tools/`     | Tool route pages — state management and UI orchestration                                          |
+| `src/components/`    | App shell, header, sidebar, shared tool scaffold                                                  |
+| `src/components/ui/` | shadcn/ui primitives (button, input, select, checkbox, etc.)                                      |
+| `src/hooks/`         | Shared client hooks (useToolState, useClipboard, useAnnouncement, useRunShortcut, usePdfDocument) |
+| `src/lib/`           | Pure logic — parsers, encoders, generators, validators, SEO helpers                               |
+| `public/pdf/`        | qpdf Web Workers for the PDF tools (plain JavaScript, kept thin)                                  |
+| `tests/e2e/`         | Browser tests run against the production build                                                    |
 
 ## Tool Design Expectations
 
@@ -66,16 +68,18 @@ pnpm lint
 pnpm test:run
 pnpm typecheck
 pnpm build
+pnpm test:e2e
 ```
 
-All four must pass.
+All five must pass. `test:e2e` needs the build from the step before it.
 
 ## Testing Guidance
 
 - Add or update tests when changing parsing, crypto, encoding, validation, or transformation logic
 - Prefer focused unit tests in `src/lib/` for pure logic
 - If a bug was user-visible, add a regression test when practical
-- Tests run against the logic directly, not the DOM — this keeps them fast and stable
+- Unit tests run against the logic directly, not the DOM — this keeps them fast and stable
+- Layout, focus, announcement and PDF engine behaviour is covered by the browser tests in `tests/e2e/`; extend those when a change is about what the page does rather than what a function returns
 
 ## Documentation
 

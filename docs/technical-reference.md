@@ -23,7 +23,7 @@ step and fails outright if there is no production build to serve. A green
 - Package manager: `pnpm`
 - Node target: `26.x`
 - Framework: Next.js 16 App Router
-- TypeScript: `6`
+- TypeScript: `7`
 - Linting/formatting: Biome
 - Unit tests: Vitest
 
@@ -69,6 +69,16 @@ itself and alternates an invisible zero-width space when the token moves but the
 sentence does not. `useAnnouncer` does the same for a repeated action —
 generating five UUIDs twice would otherwise announce once and then fall silent.
 
+### `usePdfDocument`
+
+File: [`src/hooks/usePdfDocument.ts`](../src/hooks/usePdfDocument.ts)
+
+Opens a PDF with pdf.js (imported dynamically, so the renderer only loads once
+a file is picked), holds it while pages are drawn, and destroys it when the
+file changes or the component unmounts. A load that finishes after a newer file
+was picked is discarded rather than allowed to tear down the newer document.
+Used by the page previews, the viewer dialog and the merger's cover thumbnails.
+
 ### `useRunShortcut` and `useFocusResult`
 
 File: [`src/hooks/useRunShortcut.ts`](../src/hooks/useRunShortcut.ts)
@@ -79,7 +89,7 @@ For manual tools only; live tools need neither.
   whatever disables the visible button: a shortcut that runs an action the UI
   presents as unavailable is a bug.
 - `useFocusResult()` — returns `[ref, requestFocus]`. Attach `ref` to whatever
-  *is* the result for the current mode, which is not always one element: RSA's
+  _is_ the result for the current mode, which is not always one element: RSA's
   outcome is the signature box when signing and the verdict when verifying,
   where that same box is an input. **Call `requestFocus` only on the success
   path** — the request stands until a target renders, so requesting it at the
@@ -104,16 +114,40 @@ This is the right place for narrow reusable helpers like class merging and stric
 
 Relevant files:
 
-- [`src/lib/site.ts`](../src/lib/site.ts)
+- [`src/lib/site.ts`](../src/lib/site.ts) — site URL, repository link, author entity
+- [`src/lib/tools.ts`](../src/lib/tools.ts) — tool names, descriptions and categories
 - [`src/lib/seo.ts`](../src/lib/seo.ts)
-- [`src/lib/tool-seo.ts`](../src/lib/tool-seo.ts)
+- [`src/lib/tool-seo.ts`](../src/lib/tool-seo.ts) — per-tool FAQ and how-to copy
+- [`src/lib/last-modified.ts`](../src/lib/last-modified.ts) — sitemap `lastmod` dates
 - [`src/app/sitemap.ts`](../src/app/sitemap.ts)
 - [`src/app/robots.ts`](../src/app/robots.ts)
 
-Important detail:
+Important details:
 
-- `NEXT_PUBLIC_SITE_URL` should be set in production.
-- If it is missing, the shared site helper can fall back to localhost, which is unacceptable for a real deployment.
+- **`NEXT_PUBLIC_SITE_URL` is required for deployments.** On Vercel or in CI,
+  `getSiteUrl()` throws if it is unset, so the build fails rather than shipping
+  localhost canonicals. Locally it falls back to `http://localhost:3100`.
+- **Tool names live in one place.** A tool page's `<h1>` comes from
+  `toolName(href)`, and its FAQ heading and `WebApplication` name are built from
+  the same entry, so the sidebar, page title, heading and structured data cannot
+  disagree. `toolName` throws for an unknown route.
+- **`lastmod` tracks real content changes.** Bump a date in
+  `last-modified.ts` when a page's visible content changes, not on every deploy.
+  Tool pages share `TOOL_PAGES_LAST_MODIFIED`; every other sitemap page needs
+  its own entry, and a missing one throws. The unit test checks every sitemap
+  URL resolves to a valid date that is not in the future.
+- **Site-wide links use `prefetch={false}`.** The sidebar, footer, home grid,
+  category pages and related-tools block link to every tool from every page.
+  With prefetching on, each page view triggered dozens of `?_rsc=` requests that
+  crawlers followed and counted against the crawl budget. Keep it off for any
+  new link list that repeats across pages.
+- **Structured data names one author.** The Organization lists Amaresh
+  Mohapatra as `founder` and every tool's `WebApplication` names the same person as
+  `author`, both using `authorSchema` from `site.ts`. Its `@id` is the one
+  amaresh.me gives the same person, so keep the two sites' `@id` and `sameAs`
+  in step.
+- **The 404 page has no canonical.** It sets `canonical: null`, so it cannot
+  point search engines at the home page as a duplicate.
 
 ## Security Baseline
 
@@ -132,6 +166,13 @@ Most regression coverage lives next to the pure logic in [`src/lib`](../src/lib)
 - it protects the logic that is easiest to regress silently
 
 When a user-facing bug comes from parsing, conversion, validation, or flag handling, start by writing a small lib-level regression test.
+
+Browser tests in [`tests/e2e`](../tests/e2e) cover what unit tests cannot:
+toolbar overflow at 375 px, colour contrast in both themes, live-region
+announcements, focus, consent ordering, reduced motion, and the PDF tools end
+to end — including comparisons of the page-selection parser against real qpdf
+output. They drive Chromium through `playwright-core` against the production
+build.
 
 ## Tool Authoring Guidance
 

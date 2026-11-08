@@ -19,58 +19,63 @@ The rough product goals are:
 
 ## Routes by Category
 
-### Encoding and Crypto
+Categories match the sidebar and the `/tools/category/<slug>` hub pages. A route's folder is historical and does not always match its category — the Lorem Ipsum generator lives under `/tools/text/`, and the crypto tools under `/tools/encode/`. The source of truth is [`src/lib/tools.ts`](../src/lib/tools.ts).
 
-- `/tools/encode/aes`
+### Generators (`/tools/category/generators`)
+
+- `/tools/ids/uuid`
+- `/tools/ids/password`
+- `/tools/text/lorem`
+- `/tools/ids/qrcode`
+
+### Encode / Decode (`/tools/category/encode-decode`)
+
+- `/tools/encode/base64`
 - `/tools/encode/base32`
 - `/tools/encode/base58`
-- `/tools/encode/base64`
-- `/tools/encode/crc32`
-- `/tools/encode/escape`
-- `/tools/encode/hash`
 - `/tools/encode/hex`
-- `/tools/encode/jwt`
-- `/tools/encode/rsa`
-- `/tools/encode/tls-cert`
 - `/tools/encode/url`
 - `/tools/encode/url-parser`
+- `/tools/encode/escape`
+- `/tools/encode/jwt`
 
-### PDF
+### Crypto (`/tools/category/crypto`)
 
+- `/tools/encode/hash`
+- `/tools/encode/crc32`
+- `/tools/encode/aes`
+- `/tools/encode/rsa`
+- `/tools/encode/tls-cert`
+
+### PDF (`/tools/category/pdf`)
+
+- `/tools/pdf/unlock`
 - `/tools/pdf/encrypt`
 - `/tools/pdf/merge`
 - `/tools/pdf/split`
-- `/tools/pdf/unlock`
 
-### Data
+### Data (`/tools/category/data`)
 
-- `/tools/data/baseconv`
-- `/tools/data/color`
-- `/tools/data/csv`
 - `/tools/data/json`
 - `/tools/data/yaml`
+- `/tools/data/csv`
+- `/tools/data/baseconv`
+- `/tools/data/color`
 
-### Text
+### Text (`/tools/category/text`)
 
-- `/tools/text/case`
 - `/tools/text/diff`
-- `/tools/text/lorem`
+- `/tools/text/case`
 - `/tools/text/regex`
 
-### IDs and Passwords
-
-- `/tools/ids/password`
-- `/tools/ids/qrcode`
-- `/tools/ids/uuid`
-
-### Network
+### Network (`/tools/category/network`)
 
 - `/tools/network/cidr`
 
-### Time
+### Time (`/tools/category/time`)
 
-- `/tools/time/cron`
 - `/tools/time/timestamp`
+- `/tools/time/cron`
 
 ## What Counts as a Good Tool Here
 

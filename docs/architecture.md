@@ -12,6 +12,9 @@ src/
   hooks/                Small reusable client hooks
   lib/                  Pure logic, parsers, generators, SEO helpers, utilities
 
+public/pdf/             qpdf Web Workers, plus the engine copied in at build time
+public/pdfjs/           pdf.js worker for previews, copied in at build time
+tests/e2e/              Browser tests against the production build
 docs/                   Project documentation
 ```
 
@@ -58,6 +61,7 @@ The hook layer is intentionally small and focused:
 - [`useClipboard`](../src/hooks/useClipboard.ts) for clipboard actions and feedback
 - [`useAnnouncement`](../src/hooks/useAnnouncement.ts) for the result sentence a tool announces — `useAnnouncement` for live tools (debounced, with a change token) and `useAnnouncer` for manual ones
 - [`useRunShortcut`](../src/hooks/useRunShortcut.ts) for the ⌘/Ctrl+Enter accelerator on manual tools, and `useFocusResult` for moving focus to the result
+- [`usePdfDocument`](../src/hooks/usePdfDocument.ts) for opening a PDF with pdf.js and releasing it, behind the page previews, viewer and merge thumbnails
 
 ## Tool Page Pattern
 
@@ -88,7 +92,7 @@ Each rule notes where the codebase does not yet conform. Those lists are the rem
 
 Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expensive), `pdf-unlock` and `pdf-encrypt` (WASM plus a password) and `pdf-merge` and `pdf-split` (WASM over several files), `tls-cert` (parses a certificate chain on demand), `password`, `uuid` and `lorem` (generators — re-running is the point), `diff` (expensive on large inputs). Everything else is live.
 
-*Conforming.* No live tool carries a filled button that recomputes what is already on screen. `timestamp`'s `Use current time` is a ghost convenience that fills the input. `qrcode` does keep a filled `SVG` button, which is correct — it exports a file rather than recomputing, and only appears once a code exists.
+_Conforming._ No live tool carries a filled button that recomputes what is already on screen. `timestamp`'s `Use current time` is a ghost convenience that fills the input. `qrcode` does keep a filled `SVG` button, which is correct — it exports a file rather than recomputing, and only appears once a code exists.
 
 ### 2. Where output goes
 
@@ -96,7 +100,7 @@ Manual tools, each with a stated reason: `aes` and `rsa` (key derivation is expe
 
 Split (`md:grid-cols-2` on `ToolBody`) suits structured multi-line documents — `json`, `yaml`, `csv`, `diff`. Stacked suits a value the user copies whole — encoders, hashes, checksums, case conversion. Split layouts must collapse to stacked below `lg`.
 
-*Conforming.* `escape` was moved to split; `rsa` was already stacked.
+_Conforming._ `escape` was moved to split; `rsa` was already stacked.
 
 ### 3. Where clipboard actions go
 
@@ -104,7 +108,7 @@ Split (`md:grid-cols-2` on `ToolBody`) suits structured multi-line documents —
 
 A toolbar `Copy` does not say what it will put on the clipboard. That is already ambiguous on pages with more than one copyable region — `cron`, `cidr` and `url-parser` each have several — and it is ambiguous by construction, not by accident.
 
-*Conforming.* No `Copy` or `Paste` remains in any toolbar. Where a tool has several copyable regions, each row owns its own `Copy` and the "copy all" sits in the results header — `hash` shows the pattern for both its digest and HMAC blocks. `tests/e2e/filled-state.test.ts` fails the build if two `Copy` buttons appear in one row.
+_Conforming._ No `Copy` or `Paste` remains in any toolbar. Where a tool has several copyable regions, each row owns its own `Copy` and the "copy all" sits in the results header — `hash` shows the pattern for both its digest and HMAC blocks. `tests/e2e/filled-state.test.ts` fails the build if two `Copy` buttons appear in one row.
 
 ### 4. What a field is called
 
@@ -114,7 +118,7 @@ The pattern is `<what it holds> to <what happens to it>` — `Text to Encode`, `
 
 The full convention is already correct in `base64`, `base32`, `hex` and `url`. Extend it; do not invent a second one.
 
-*Conforming.* `escape`'s input and `csv`'s output — the only two labels genuinely fixed beside a direction toggle — now track the mode, and `yaml`, `aes`, `base58`, `rsa`, `hash` and `crc32` were rephrased onto the convention.
+_Conforming._ `escape`'s input and `csv`'s output — the only two labels genuinely fixed beside a direction toggle — now track the mode, and `yaml`, `aes`, `base58`, `rsa`, `hash` and `crc32` were rephrased onto the convention.
 
 ### 5. What an empty state says
 
@@ -125,7 +129,7 @@ The full convention is already correct in `base64`, `base32`, `hex` and `url`. E
 
 "as you type" is the only place a live tool tells the user it is live. Never instruct a click that is not required.
 
-*Conforming.* All 18 live tools with an empty state end with "as you type", mode-aware where a mode exists. Manual tools name their button.
+_Conforming._ All 18 live tools with an empty state end with "as you type", mode-aware where a mode exists. Manual tools name their button.
 
 ### 6. What lives in the toolbar
 
@@ -133,7 +137,7 @@ The full convention is already correct in `base64`, `base32`, `hex` and `url`. E
 
 A mutually-exclusive choice is always a `SegmentedControl`, never two buttons — it gets `role="radio"` semantics and arrow-key navigation for free. Putting a mode toggle beside the action it modifies also produces the same word twice in one row, once as a setting and once as an action, distinguishable only by button styling.
 
-*Conforming.* Every mode, direction and view toggle now sits in the options bar. The layout tests check that toolbars fit a 375px card; `flex-wrap` remains as insurance rather than the thing holding the layout together.
+_Conforming._ Every mode, direction and view toggle now sits in the options bar. The layout tests check that toolbars fit a 375px card; `flex-wrap` remains as insurance rather than the thing holding the layout together.
 
 ### Accessibility invariants
 
@@ -146,7 +150,7 @@ These are settled and enforced; do not regress them.
 - Interactive targets are at least 24×24 CSS pixels, counting hit-area overlays. Measure the target, not the border box.
 - `tests/e2e/toolbar-overflow.test.ts` asserts no tool toolbar overflows its card at 375 px, across every available tool.
 - Colour contrast and focus-ring contrast are measured, not assumed: `tests/e2e/contrast.test.ts` computes ratios against each element's composited background in both themes, and opens with a self-test that injects known-bad text — a checker matching nothing reports zero failures and looks like a pass.
-- `tests/e2e/filled-state.test.ts` drives each tool to a **real result** first, then asserts: no duplicate `Copy` in a row, nothing wider than its container at 375 px, a live-region mutation for a *second, different* result, focus leaving the action button on manual tools, and no interactive target under 24×24 **including `tabIndex=-1`**. Presence checks are not enough — every one of those was green while the behaviour was broken.
+- `tests/e2e/filled-state.test.ts` drives each tool to a **real result** first, then asserts: no duplicate `Copy` in a row, nothing wider than its container at 375 px, a live-region mutation for a _second, different_ result, focus leaving the action button on manual tools, and no interactive target under 24×24 **including `tabIndex=-1`**. Presence checks are not enough — every one of those was green while the behaviour was broken.
 - Anything asynchronous in a tool compares against an attempt counter before publishing. `pdf-unlock` shows the pattern: selection, password edits, Clear and unmount all invalidate the run in flight.
 
 ## Shared Product Decisions
@@ -168,6 +172,7 @@ Relevant files:
 - [`src/lib/seo.ts`](../src/lib/seo.ts)
 - [`src/lib/tool-seo.ts`](../src/lib/tool-seo.ts)
 - [`src/lib/site.ts`](../src/lib/site.ts)
+- [`src/lib/last-modified.ts`](../src/lib/last-modified.ts)
 - [`src/components/SeoFaq.tsx`](../src/components/SeoFaq.tsx)
 - [`src/components/ToolSeoFaqServer.tsx`](../src/components/ToolSeoFaqServer.tsx)
 
@@ -178,21 +183,28 @@ the right call. Removing PDF encryption correctly means parsing cross-reference
 tables and streams, object streams, and every standard security handler (RC4
 40/128, AES-128, AES-256); assembling pages from several documents means
 rewriting object numbers, resources and page trees without breaking any of it.
-[qpdf](https://qpdf.readthedocs.io/) has done both for twenty years, so it is
-compiled to WebAssembly and driven directly.
+[qpdf](https://qpdf.readthedocs.io/) has done all of it for twenty years, so it
+is compiled to WebAssembly and driven directly.
 
-`pdf-unlock` and `pdf-merge` each own a worker in `public/pdf/` and a module in
-`src/lib/`. What they share — the PDF header check, the size ceiling, the exit
-code rules, the warning extraction — lives in
-[`src/lib/qpdf.ts`](../src/lib/qpdf.ts), so the two tools cannot drift into two
-conventions for the same engine behaviour. What differs is what an error *means*
-to the reader, and that stays in each tool's own module.
+Each of the four PDF tools — `pdf-unlock`, `pdf-encrypt`, `pdf-merge` and
+`pdf-split` — owns a worker in `public/pdf/` and a module in `src/lib/`. What
+they share — the PDF header check, the size ceiling, the exit code rules, the
+warning extraction, the not-a-PDF and not-encrypted detection — lives in
+[`src/lib/qpdf.ts`](../src/lib/qpdf.ts), so the tools cannot drift into
+separate conventions for the same engine behaviour. What differs is what an
+error _means_ to the reader, and that stays in each tool's own module.
+
+Page previews are a separate concern: they are drawn by
+[pdf.js](https://mozilla.github.io/pdf.js/), imported only when a file is
+picked, with its worker copied to `public/pdfjs/` by
+[`scripts/copy-pdfjs-worker.mjs`](../scripts/copy-pdfjs-worker.mjs) so it stays
+same-origin. pdf.js only reads; every byte of output comes from qpdf.
 
 Consequences worth knowing about:
 
 - **Instantiating WebAssembly requires `'wasm-unsafe-eval'` in `script-src`.**
-  A dedicated worker takes its CSP from the response headers of *its own script
-  URL*, not from the page that created it. The worker is therefore served as a
+  A dedicated worker takes its CSP from the response headers of _its own script
+  URL_, not from the page that created it. The worker is therefore served as a
   static file from `public/pdf/` so that relaxation can be scoped to that one
   directory in [`next.config.ts`](../next.config.ts). Every page in the app,
   including the PDF tool itself, keeps the strict policy, and no other worker
@@ -208,11 +220,11 @@ Consequences worth knowing about:
   All interpretation — deciding that exit code 2 with `invalid password` means
   a wrong password rather than a damaged file — lives in
   [`src/lib/pdf-unlock.ts`](../src/lib/pdf-unlock.ts), where it is unit tested.
-  The worker itself is plain JavaScript in `public/`, so keeping logic out of it
-  is deliberate.
+  The same split holds for the other three tools. The workers are plain
+  JavaScript in `public/`, so keeping logic out of them is deliberate.
 - **Exit code 3 is success.** qpdf returns 3 when the operation completed but
   printed warnings, which real-world PDFs do routinely — a cross-reference
-  table that disagrees with the object count, say. Both passes accept 0 and 3;
+  table that disagrees with the object count, say. Every tool accepts 0 and 3;
   treating 3 as a failure rejects files that unlock perfectly well. The
   warnings are surfaced alongside the result rather than in place of it.
 - **Raw qpdf output is scrubbed before display.** `--show-encryption` prints the
