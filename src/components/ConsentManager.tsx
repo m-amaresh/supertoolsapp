@@ -7,9 +7,16 @@ import {
   ANALYTICS_CONSENT_SIGNAL,
   CONSENT_NAMESPACE,
   clearAnalyticsCookies,
+  clearUnsavedStatus,
+  enhanceConsentUi,
   getConsentStatus,
   HAS_CONSENTED_KEY,
   hasAnalyticsConsent,
+  isolatePreferences,
+  noteConsentAnswer,
+  onAnalyticsReject,
+  onPreferencesClosed,
+  releaseBannerTabTrap,
   setConsentStatus,
   syncAnalyticsConsent,
 } from "@/lib/analytics-consent";
@@ -60,8 +67,13 @@ export function ConsentManager() {
     }, 10000);
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisibility);
+    // Capture on document runs before the vendor's listeners on its elements.
+    document.addEventListener("keydown", releaseBannerTabTrap, true);
+    document.addEventListener("click", noteConsentAnswer, true);
     return () => {
       window.clearTimeout(timeout);
+      document.removeEventListener("keydown", releaseBannerTabTrap, true);
+      document.removeEventListener("click", noteConsentAnswer, true);
       window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisibility);
     };
@@ -89,11 +101,19 @@ export function ConsentManager() {
               "Allow Google Analytics cookies to recognise returning visits and understand journeys between pages. Without these cookies, Google still receives limited page-view and engagement measurements.",
             defaultValue: false,
             gtag: ANALYTICS_CONSENT_SIGNAL,
-            onReject: clearAnalyticsCookies,
+            // A later grant supersedes a withdrawal that failed to save.
+            onAccept: clearUnsavedStatus,
+            onReject: onAnalyticsReject,
           },
         ],
         prompt: { position: "bottomRight" },
         backdrop: { show: false },
+        // Silktide's only use of `mode` is to skip focusing Accept as the
+        // banner is built. The banner blocks nothing, so taking focus on load
+        // would start keyboard users in the page corner instead of at the top.
+        mode: "wizard",
+        onPreferencesOpen: isolatePreferences,
+        onPreferencesClose: onPreferencesClosed,
         text: {
           prompt: {
             description:
@@ -115,6 +135,7 @@ export function ConsentManager() {
           },
         },
       });
+      enhanceConsentUi();
       // Also clean up cookies left by an earlier version or a cleared preference.
       if (!hasAnalyticsConsent()) clearAnalyticsCookies();
       setConsentStatus("ready");

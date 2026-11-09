@@ -390,19 +390,9 @@ html #stcm-wrapper .stcm-button {
   font-weight: 500;
 }
 
-/* Accept and reject both ship as `stcm-button-primary`, which puts two filled
-   buttons side by side. The site's convention is one filled action and one
-   outline beside it, so the destructive-of-nothing option steps back. */
-html #stcm-wrapper .stcm-reject-all {
-  background-color: transparent;
-  color: var(--foreground);
-  border-color: var(--border-strong);
-}
-
-html #stcm-wrapper .stcm-reject-all:hover {
-  background-color: var(--accent);
-  color: var(--foreground);
-}
+/* Accept and decline both ship as `stcm-button-primary` and keep that one
+   style on purpose, here and in the preferences dialog. Refusing must be as
+   prominent as accepting, so neither choice is styled as the default. */
 
 /* Attribution to a genuinely free tool is fair, but it should read as a small
    mark rather than a second brand competing with the page.
@@ -444,19 +434,6 @@ html #stcm-modal .stcm-modal-close:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
   box-shadow: none;
-}
-
-/* The modal's own reject sits beside Save and ships filled, same as the
-   banner's — step it back the same way. */
-html #stcm-wrapper .stcm-modal-reject-all {
-  background-color: transparent;
-  color: var(--foreground);
-  border-color: var(--border-strong);
-}
-
-html #stcm-wrapper .stcm-modal-reject-all:hover {
-  background-color: var(--accent);
-  color: var(--foreground);
 }
 
 /* A dismissal control should not be the heaviest thing in the dialog. */

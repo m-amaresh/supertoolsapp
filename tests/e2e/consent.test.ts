@@ -2,6 +2,7 @@ import type { Browser, BrowserContext, Page } from "playwright-core";
 import { chromium } from "playwright-core";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ANALYTICS_CONSENT_KEY } from "../../src/lib/analytics-consent";
 import { resolveChromiumPath } from "./chromium";
 import { type RunningServer, startProductionServer } from "./server";
 
@@ -343,6 +344,233 @@ describe("cookie consent", () => {
         .poll(() => page.getByRole("status").textContent())
         .toContain("Preferences unavailable");
       expect(await button.getAttribute("aria-disabled")).toBe("true");
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  /** Whether keyboard focus is currently inside the given container. */
+  function focusInside(page: Page, selector: string): Promise<boolean> {
+    return page.evaluate(
+      (sel) =>
+        Boolean(document.querySelector(sel)?.contains(document.activeElement)),
+      selector,
+    );
+  }
+
+  it("leaves focus at the top of the page when the banner appears", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      expect(await page.locator(BANNER).isVisible()).toBe(true);
+      expect(
+        await focusInside(page, BANNER),
+        "a non-modal banner must not take focus on load",
+      ).toBe(false);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("styles declining exactly like accepting", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      const look = (selector: string) =>
+        page.locator(selector).evaluate((el) => {
+          const s = getComputedStyle(el);
+          return [s.backgroundColor, s.color, s.borderColor, s.fontWeight];
+        });
+      expect(await look(REJECT)).toEqual(await look(ACCEPT));
+      await page.locator(`${BANNER} .stcm-preferences-button`).click();
+      expect(await look(`${MODAL} .stcm-modal-reject-all`)).toEqual(
+        await look(`${MODAL} .stcm-modal-save`),
+      );
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("lets keyboard users Tab out of the banner in both directions", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      // The banner blocks nothing, so it must not hold focus until answered.
+      // Silktide's own trap wraps last → first and first → last.
+      const focusables = `${BANNER} :is(button, a[href], input, [tabindex]:not([tabindex="-1"]))`;
+      await page.locator(focusables).last().focus();
+      await page.keyboard.press("Tab");
+      expect(
+        await focusInside(page, BANNER),
+        "Tab from the banner's last control must leave the banner",
+      ).toBe(false);
+
+      await page.locator(focusables).first().focus();
+      await page.keyboard.press("Shift+Tab");
+      expect(
+        await focusInside(page, BANNER),
+        "Shift+Tab from the banner's first control must leave the banner",
+      ).toBe(false);
+      expect(await page.locator(BANNER).isVisible()).toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("exposes preferences as a named, modal dialog with named controls", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      await page.locator(REJECT).click();
+      const opener = page.getByRole("button", {
+        name: "Cookie preferences",
+        exact: true,
+      });
+      await opener.click();
+
+      const dialog = page.getByRole("dialog", { name: "Cookie preferences" });
+      await expect.poll(() => dialog.isVisible()).toBe(true);
+      expect(await dialog.getAttribute("aria-modal")).toBe("true");
+      expect(
+        await dialog
+          .getByRole("button", { name: "Close cookie preferences" })
+          .count(),
+      ).toBe(1);
+      expect(
+        await dialog
+          .getByRole("checkbox", { name: "Analytics cookies", exact: true })
+          .count(),
+      ).toBe(1);
+      expect(
+        await page.locator("main").evaluate((main) => main.closest("[inert]")),
+        "the page behind the dialog must be inert",
+      ).not.toBeNull();
+
+      // A press outside must not strand focus where Escape goes unheard.
+      await page.mouse.click(5, 5);
+      expect(await focusInside(page, MODAL)).toBe(true);
+      await page.keyboard.press("Escape");
+      await expect.poll(() => page.locator(MODAL).isVisible()).toBe(false);
+      expect(await page.locator("[inert]").count()).toBe(0);
+      await expect
+        .poll(() =>
+          page.evaluate(() => document.activeElement?.textContent?.trim()),
+        )
+        .toBe("Cookie preferences");
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("brings the banner back when preferences close unanswered", async () => {
+    const { context, page } = await freshVisit();
+    try {
+      if (!(await analyticsEnabled(page))) return;
+      await page.locator(`${BANNER} .stcm-preferences-button`).click();
+      await expect.poll(() => page.locator(MODAL).isVisible()).toBe(true);
+      expect(await page.locator(BANNER).count()).toBe(0);
+      await page.locator(`${MODAL} .stcm-modal-close`).click();
+      await expect
+        .poll(() => focusInside(page, BANNER), {
+          message: "closing returns the visitor to the restored banner",
+        })
+        .toBe(true);
+      await expect
+        .poll(() =>
+          page.getByRole("region", { name: "Cookie consent" }).isVisible(),
+        )
+        .toBe(true);
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("does not warn about saving when the browser blocks storage", async () => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 1000 },
+    });
+    try {
+      await context.route("**://*.googletagmanager.com/**", (route) =>
+        route.abort(),
+      );
+      // As with site data blocked: any access to localStorage throws.
+      await context.addInitScript(() => {
+        Object.defineProperty(window, "localStorage", {
+          configurable: true,
+          get() {
+            throw new DOMException("Storage blocked", "SecurityError");
+          },
+        });
+      });
+      const page = await context.newPage();
+      const dialogs: string[] = [];
+      page.on("dialog", (dialog) => {
+        dialogs.push(dialog.message());
+        void dialog.dismiss();
+      });
+      await page.goto(`${server.baseUrl}/`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(600);
+      if (!(await analyticsEnabled(page))) return;
+
+      await page.locator(REJECT).click();
+      await page.waitForTimeout(400);
+      expect(dialogs).toEqual([]);
+      expect(await page.getByText("could not be saved").count()).toBe(0);
+      const button = page.getByRole("button", {
+        name: "Cookie preferences",
+        exact: true,
+      });
+      expect(await button.getAttribute("aria-disabled")).toBe("false");
+    } finally {
+      await context.close();
+    }
+  }, 120_000);
+
+  it("removes an earlier grant when a full quota blocks new writes", async () => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 1000 },
+    });
+    try {
+      await context.route("**://*.googletagmanager.com/**", (route) =>
+        route.abort(),
+      );
+      // A grant saved while there was room, then a full quota: reads and
+      // removals still work, every write throws — including Silktide's probe,
+      // which therefore reports storage as unavailable.
+      await context.addInitScript((key) => {
+        const setItem = Storage.prototype.setItem;
+        if (!sessionStorage.getItem("seeded")) {
+          setItem.call(localStorage, key, "true");
+          setItem.call(sessionStorage, "seeded", "1");
+        }
+        Storage.prototype.setItem = () => {
+          throw new DOMException("Quota exceeded", "QuotaExceededError");
+        };
+      }, ANALYTICS_CONSENT_KEY);
+      const page = await context.newPage();
+      await page.goto(`${server.baseUrl}/`, { waitUntil: "networkidle" });
+      await page.waitForTimeout(600);
+      if (!(await analyticsEnabled(page))) return;
+      expect(
+        (await consentCalls(page))[0]?.payload.analytics_storage,
+        "precondition: the earlier grant is replayed",
+      ).toBe("granted");
+
+      await page.locator(REJECT).click();
+      await page.waitForTimeout(400);
+      expect(
+        await page.evaluate(
+          (key) => localStorage.getItem(key),
+          ANALYTICS_CONSENT_KEY,
+        ),
+      ).toBeNull();
+      expect(await page.getByText("could not be saved").count()).toBe(0);
+
+      await page.reload({ waitUntil: "networkidle" });
+      expect(
+        (await consentCalls(page))[0]?.payload.analytics_storage,
+        "a withdrawal must not be undone by the next load",
+      ).toBe("denied");
     } finally {
       await context.close();
     }

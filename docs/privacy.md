@@ -68,9 +68,12 @@ is **default-denied**:
   these for aggregate modelling.
 
   The client id is the part worth being precise about: because no cookie is
-  written, a fresh one is generated on every page load, so it cannot link your
-  visits to each other. It is not the persistent identifier an accepted session
-  gets. But this is a real page view report, not a contentless ping.
+  written, a fresh one — and a fresh session id — is generated for every page
+  view, including moves between pages that do not reload the page. Each page
+  view therefore arrives looking like a first visit, and the ids cannot link
+  your page views or visits to each other. They are not the persistent
+  identifier an accepted session gets. But this is a real page view report,
+  not a contentless ping.
 
   What it never contains is anything you put _into_ a tool.
 

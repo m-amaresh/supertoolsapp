@@ -5,7 +5,7 @@
  */
 
 interface SilktideConsentType {
-  /** Also the localStorage suffix: `stcm.consent.<id>`. */
+  /** Also the localStorage suffix: `stcm.<namespace>.consent.<id>`. */
   id: string;
   label: string;
   description: string;
@@ -14,6 +14,7 @@ interface SilktideConsentType {
   defaultValue?: boolean;
   /** Consent Mode signal(s) this type grants; the library calls gtag itself. */
   gtag?: string | string[];
+  onAccept?: () => void;
   onReject?: () => void;
 }
 
@@ -28,6 +29,11 @@ interface SilktideConfig {
   autoShow?: boolean;
   eventName?: string;
   debug?: boolean;
+  /** In v2.0.1, "wizard" only stops the banner focusing Accept when built. */
+  mode?: "wizard";
+  onPreferencesOpen?: () => void;
+  /** Fires on every `toggleModal(false)`, even when the dialog was not open. */
+  onPreferencesClose?: () => void;
   text?: {
     prompt?: {
       description?: string;
@@ -50,6 +56,8 @@ interface SilktideConfig {
 }
 
 interface SilktideInstance {
+  /** Probed once at construction; false means choices cannot persist. */
+  localStorageAvailable: boolean;
   /** Opens or closes the preferences modal. */
   toggleModal(show: boolean): void;
   updateCheckboxState(save: boolean): void;
